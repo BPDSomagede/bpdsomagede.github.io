@@ -1,0 +1,89 @@
+name: Finalisasi URL BPD Somagede
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalisasi-url:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil isi repository
+        uses: actions/checkout@v4
+
+      - name: Rapikan URL website
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = [
+              ("https://bpdsomagede.github.io/DesaSomagede/",
+               "https://bpdsomagede.github.io/"),
+
+              ("https://bpdsomagede.github.io/DesaSomagede",
+               "https://bpdsomagede.github.io"),
+
+              ("/DesaSomagede/",
+               "/"),
+
+              ("/DesaSomagede",
+               "")
+          ]
+
+          extensions = {
+              ".html", ".htm", ".js", ".css",
+              ".xml", ".json", ".txt",
+              ".webmanifest", ".md"
+          }
+
+          changed = []
+
+          for p in Path(".").rglob("*"):
+              if not p.is_file():
+                  continue
+
+              if ".git" in p.parts or ".github" in p.parts:
+                  continue
+
+              if p.suffix.lower() not in extensions:
+                  continue
+
+              try:
+                  text = p.read_text(encoding="utf-8")
+              except:
+                  continue
+
+              new_text = text
+
+              for old, new in replacements:
+                  new_text = new_text.replace(old, new)
+
+              if new_text != text:
+                  p.write_text(new_text, encoding="utf-8")
+                  changed.append(str(p))
+
+          print("FILE YANG DIPERBARUI:")
+          for item in changed:
+              print(" -", item)
+
+          print("")
+          print("SELESAI — konten dan desain tidak diubah.")
+          PY
+
+      - name: Simpan perubahan
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "Semua URL sudah benar. Tidak ada perubahan."
+            exit 0
+          fi
+
+          git commit -m "Rapikan SEO sitemap canonical dan internal links"
+          git push

@@ -1,0 +1,80 @@
+BPD DESA SOMAGEDE — PORTAL BERITA PROFESIONAL + ARSIP + KOMENTAR + LIKE + SHARE
+
+PAKET INI MENAMBAHKAN:
+1. Arsip berita per tahun di sisi kanan.
+2. Klik tahun -> daftar berita tahun tersebut tampil kronologis dari TERLAMA ke TERBARU.
+3. Berita terpilih tetap tampil di kiri, tanpa modal dan tanpa pindah halaman.
+4. Semua foto berita tetap langsung terlihat dengan tata letak otomatis.
+5. LIKE:
+   - Satu like per browser/perangkat.
+   - Jumlah like disimpan di Cloudflare D1.
+6. KOMENTAR:
+   - Nama + email + komentar.
+   - Email WAJIB, tetapi TIDAK PERNAH ditampilkan ke publik.
+   - Komentar masuk sebagai PENDING dan baru tampil setelah disetujui melalui Editor.
+   - Ada perlindungan sederhana anti-spam (honeypot + jeda kirim).
+7. MODERASI KOMENTAR DI EDITOR:
+   - Menunggu Persetujuan
+   - Sudah Disetujui
+   - Ditolak
+   - Semua Komentar
+   - Tombol Setujui / Tolak / Hapus
+8. SHARE:
+   - Bagikan native HP
+   - WhatsApp
+   - Facebook
+   - Telegram
+   - Salin Link
+9. LINK UNIK BERITA:
+   https://bpdsomagede.github.io/DesaSomagede/?berita=judul-berita-YYYYMMDD
+   Berita baru memakai slug yang bersih dan stabil.
+10. D1 OTOMATIS:
+    Tabel komentar dan reaction dibuat otomatis oleh Worker. TIDAK PERLU menjalankan SQL manual.
+
+URUTAN PEMASANGAN
+
+A. CLOUDFLARE WORKER
+1. Buka Worker: bpd-somagede-cms
+2. Edit Code.
+3. Hapus seluruh kode lama.
+4. Copy seluruh isi file worker.js dari paket ini.
+5. Deploy.
+6. Buka:
+   https://bpd-somagede-cms.bpddesasomagede.workers.dev/
+7. Harus tampil ok:true dan social:"Comments + Like + Share".
+
+TIDAK PERLU:
+- membuat D1 baru
+- mengubah binding DB
+- mengganti Cloudinary
+- mengganti EDITOR_TOKEN
+- menambah Secret baru
+
+B. GITHUB
+Upload/timpa ke ROOT repository BPDSomagede/DesaSomagede:
+1. index.html
+2. editor.html
+3. bpd-portal-berita.js
+4. bpd-portal-berita.css
+
+Commit changes.
+
+C. TEST
+1. Buka beranda, Ctrl+F5.
+2. Klik Like.
+3. Buka Arsip Tahun.
+4. Klik salah satu berita arsip.
+5. Isi komentar menggunakan email.
+6. Komentar belum langsung tampil karena menunggu moderasi.
+7. Buka Editor -> Moderasi Komentar -> Setujui.
+8. Refresh beranda -> komentar tampil.
+9. Klik Bagikan -> Salin Link atau WhatsApp.
+10. Buka link hasil share -> berita tersebut otomatis tampil di kolom kiri.
+
+PRIVASI:
+Email komentator disimpan di D1 untuk moderasi dan hanya dikirim oleh endpoint admin yang memakai EDITOR_TOKEN.
+Endpoint publik hanya mengirim nama, komentar, dan waktu komentar.
+
+CATATAN:
+Sistem komentar ini berbasis alamat email tetapi belum melakukan VERIFIKASI EMAIL melalui kode/OTP.
+Verifikasi email membutuhkan layanan pengiriman email tambahan dan sengaja tidak ditambahkan agar sistem tetap gratis dan sederhana.

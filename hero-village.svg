@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700">
+<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#dff7ed"/><stop offset="1" stop-color="#f8fcfa"/></linearGradient><linearGradient id="hill" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0f9f70"/><stop offset="1" stop-color="#067052"/></linearGradient></defs>
+<rect width="1200" height="700" fill="url(#sky)"/><circle cx="1000" cy="120" r="58" fill="#f7c948" opacity=".9"/>
+<path d="M0 410C180 320 330 350 500 420S820 510 1200 335V700H0Z" fill="#b8e7d4"/>
+<path d="M0 500C210 395 360 430 570 520s380 60 630-40v220H0Z" fill="url(#hill)"/>
+<g transform="translate(430 235)"><rect x="0" y="120" width="355" height="190" rx="8" fill="#fff"/><path d="M-30 130 178 20 385 130Z" fill="#9a3f33"/><rect x="140" y="195" width="75" height="115" fill="#0c6f51"/><rect x="40" y="175" width="70" height="70" fill="#c8efe0"/><rect x="245" y="175" width="70" height="70" fill="#c8efe0"/><rect x="32" y="154" width="291" height="20" fill="#f7c948"/><text x="178" y="166" text-anchor="middle" font-size="18" font-family="Arial" font-weight="700" fill="#063b2e">BALAI DESA SOMAGEDE</text></g>
+<g fill="#fff" opacity=".85"><circle cx="140" cy="160" r="7"/><circle cx="185" cy="112" r="4"/><circle cx="1085" cy="250" r="6"/></g>
+</svg>

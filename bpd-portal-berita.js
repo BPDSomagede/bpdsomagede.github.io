@@ -95,6 +95,91 @@ function applyArticleSEO(item){
 const mount=document.getElementById('bpdPortalBerita');
 if(!mount) return;
 
+/* =========================================================
+   PENYEMPURNAAN BERANDA 11 AGUSTUS 2026
+   - Judul Berita Terbaru dan isi Arsip menggunakan bobot normal
+   - Header utama lebih ringkas dan proporsional
+   ========================================================= */
+function applyPortalPresentationFixes(){
+  if(!document.getElementById('bpd-home-refine-20260811')){
+    const style=document.createElement('style');
+    style.id='bpd-home-refine-20260811';
+    style.textContent=`
+      #bpdPortalBerita .portal-news-item strong{
+        font-weight:400!important;
+      }
+      #bpdPortalBerita .portal-news-item small{
+        font-weight:400!important;
+      }
+      #bpdPortalBerita .archive-item-title,
+      #bpdPortalBerita .archive-item-date{
+        font-weight:400!important;
+      }
+
+      .hero{
+        min-height:300px!important;
+      }
+      .hero-content{
+        padding:22px 30px!important;
+      }
+      .hero h2{
+        margin:8px 0 5px!important;
+        font-size:clamp(26px,3.35vw,39px)!important;
+        line-height:1.04!important;
+        letter-spacing:-.015em;
+      }
+      .hero h2 .bpd-hero-line{
+        display:block;
+      }
+      .hero h2 .bpd-hero-line-one,
+      .hero h2 .bpd-hero-line-three{
+        white-space:nowrap;
+      }
+      .hero h2 .bpd-hero-line-two{
+        margin:2px 0;
+        font-weight:800;
+        font-style:italic;
+      }
+      .hero p{
+        line-height:1.35!important;
+      }
+
+      @media(max-width:680px){
+        .hero{
+          min-height:270px!important;
+        }
+        .hero-content{
+          padding:18px 18px!important;
+        }
+        .hero h2{
+          font-size:clamp(24px,8vw,32px)!important;
+          line-height:1.03!important;
+        }
+      }
+      @media(max-width:390px){
+        .hero{
+          min-height:255px!important;
+        }
+        .hero h2{
+          font-size:23px!important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  const heroTitle=document.querySelector('.hero h2');
+  if(heroTitle && !heroTitle.dataset.bpdRefined){
+    heroTitle.innerHTML=`
+      <span class="bpd-hero-line bpd-hero-line-one">Bersama Masyarakat</span>
+      <span class="bpd-hero-line bpd-hero-line-two"><strong><em>Mengawal</em></strong></span>
+      <span class="bpd-hero-line bpd-hero-line-three">Pembangunan Desa</span>`;
+    heroTitle.dataset.bpdRefined='1';
+  }
+}
+
+applyPortalPresentationFixes();
+
 const INITIAL_SLUG=new URL(location.href).searchParams.get('berita');
 if(INITIAL_SLUG){
   requestAnimationFrame(()=>{
@@ -143,7 +228,6 @@ const clientId=(()=>{
   return id;
 })();
 
-// Bulan berjalan mengikuti waktu Desa Somagede / WIB, bukan zona waktu perangkat pengunjung.
 const nowLocal=new Date();
 const jakartaParts=Object.fromEntries(
   new Intl.DateTimeFormat('en-US',{
@@ -164,8 +248,28 @@ const MONTH_NAME=new Intl.DateTimeFormat('id-ID',{
 }).format(nowLocal);
 
 function isCurrentMonth(item){
-  // Dasar klasifikasi adalah TANGGAL BERITA (activity_date), bukan waktu unggah.
   return String(item?.activity_date||'').slice(0,7)===CURRENT_YM;
+}
+
+/* Urutan selalu berdasarkan tanggal kegiatan terbaru ke terlama. */
+function activityTimestamp(item){
+  const raw=String(item?.activity_date||'').trim();
+  if(!raw)return 0;
+  const normalized=/^\d{4}-\d{2}-\d{2}$/.test(raw)
+    ?`${raw}T00:00:00+07:00`
+    :raw;
+  const time=Date.parse(normalized);
+  return Number.isFinite(time)?time:0;
+}
+
+function newestActivityFirst(items){
+  return (Array.isArray(items)?items:[])
+    .slice()
+    .sort((a,b)=>{
+      const byDate=activityTimestamp(b)-activityTimestamp(a);
+      if(byDate)return byDate;
+      return Number(b?.id||0)-Number(a?.id||0);
+    });
 }
 
 let ALL_PUBLIC=[];
@@ -187,8 +291,6 @@ function articleUrl(item){
 }
 
 function shareUrl(item){
-  // URL Worker menyediakan Open Graph dinamis untuk preview medsos,
-  // lalu mengarahkan pengunjung ke articleUrl() di GitHub Pages.
   return `${API}/berita/${encodeURIComponent(item.slug)}`;
 }
 
@@ -203,7 +305,6 @@ function images(item){
   const arr=Array.isArray(item?.images)
     ?item.images.filter(x=>x&&x.url)
     :[];
-
   if(arr.length)return arr;
   return item?.cover_url?[{url:item.cover_url}]:[];
 }
@@ -217,30 +318,17 @@ function sideImage(item){
 async function getDetail(id){
   const key=String(id);
   if(detailCache.has(key))return detailCache.get(key);
-
-  const r=await fetch(`${API}/api/activities/${encodeURIComponent(key)}`,{
-    cache:'default'
-  });
+  const r=await fetch(`${API}/api/activities/${encodeURIComponent(key)}`,{cache:'default'});
   const d=await r.json();
-
-  if(!r.ok||!d.ok||!d.item){
-    throw new Error(d.error||'Gagal memuat berita');
-  }
-
+  if(!r.ok||!d.ok||!d.item)throw new Error(d.error||'Gagal memuat berita');
   detailCache.set(key,d.item);
   return d.item;
 }
 
 async function getDetailBySlug(slug){
-  const r=await fetch(`${API}/api/activities/slug/${encodeURIComponent(slug)}`,{
-    cache:'default'
-  });
+  const r=await fetch(`${API}/api/activities/slug/${encodeURIComponent(slug)}`,{cache:'default'});
   const d=await r.json();
-
-  if(!r.ok||!d.ok||!d.item){
-    throw new Error(d.error||'Berita tidak ditemukan');
-  }
-
+  if(!r.ok||!d.ok||!d.item)throw new Error(d.error||'Berita tidak ditemukan');
   detailCache.set(String(d.item.id),d.item);
   return d.item;
 }
@@ -248,34 +336,22 @@ async function getDetailBySlug(slug){
 function galleryHTML(item){
   const pics=images(item);
   if(!pics.length)return '';
-
   return `
     <div class="portal-insta-gallery" data-insta-gallery data-count="${pics.length}" data-index="0">
       <div class="portal-insta-viewport">
         <div class="portal-insta-track" data-insta-track>
           ${pics.map((img,i)=>`
             <figure class="portal-insta-slide" aria-hidden="${i===0?'false':'true'}">
-              <span class="portal-insta-bg" aria-hidden="true">
-                <img src="${esc(img.url)}" alt="" loading="${i<2?'eager':'lazy'}" decoding="async">
-              </span>
-              <img
-                class="portal-insta-image"
-                src="${esc(img.url)}"
-                alt="${esc(item.title||'Berita Desa Somagede')} — foto ${i+1}"
-                loading="${i<2?'eager':'lazy'}"
-                decoding="async"
-                ${i===0?'fetchpriority="high"':''}>
+              <span class="portal-insta-bg" aria-hidden="true"><img src="${esc(img.url)}" alt="" loading="${i<2?'eager':'lazy'}" decoding="async"></span>
+              <img class="portal-insta-image" src="${esc(img.url)}" alt="${esc(item.title||'Berita Desa Somagede')} — foto ${i+1}" loading="${i<2?'eager':'lazy'}" decoding="async" ${i===0?'fetchpriority="high"':''}>
             </figure>`).join('')}
         </div>
       </div>
-
       ${pics.length>1?`
         <button type="button" class="portal-insta-nav prev" data-insta-prev aria-label="Foto sebelumnya">‹</button>
         <button type="button" class="portal-insta-nav next" data-insta-next aria-label="Foto berikutnya">›</button>
         <div class="portal-insta-count" data-insta-count>1 / ${pics.length}</div>
-        <div class="portal-insta-dots">
-          ${pics.map((_,i)=>`<button type="button" class="portal-insta-dot ${i===0?'active':''}" data-insta-dot="${i}" aria-label="Foto ${i+1}"></button>`).join('')}
-        </div>`:''}
+        <div class="portal-insta-dots">${pics.map((_,i)=>`<button type="button" class="portal-insta-dot ${i===0?'active':''}" data-insta-dot="${i}" aria-label="Foto ${i+1}"></button>`).join('')}</div>`:''}
     </div>`;
 }
 
@@ -285,7 +361,6 @@ function setInstaGallery(gallery,index,{instant=false}={}){
   index=Number(index)||0;
   if(index<0)index=total-1;
   if(index>=total)index=0;
-
   gallery.dataset.index=String(index);
   const track=gallery.querySelector('[data-insta-track]');
   if(track){
@@ -293,13 +368,8 @@ function setInstaGallery(gallery,index,{instant=false}={}){
     track.style.transform=`translate3d(${-100*index}%,0,0)`;
     if(instant)requestAnimationFrame(()=>track.style.transition='');
   }
-
-  gallery.querySelectorAll('.portal-insta-slide').forEach((slide,i)=>{
-    slide.setAttribute('aria-hidden',i===index?'false':'true');
-  });
-  gallery.querySelectorAll('[data-insta-dot]').forEach((dot,i)=>{
-    dot.classList.toggle('active',i===index);
-  });
+  gallery.querySelectorAll('.portal-insta-slide').forEach((slide,i)=>slide.setAttribute('aria-hidden',i===index?'false':'true'));
+  gallery.querySelectorAll('[data-insta-dot]').forEach((dot,i)=>dot.classList.toggle('active',i===index));
   const count=gallery.querySelector('[data-insta-count]');
   if(count)count.textContent=`${index+1} / ${total}`;
 }
@@ -324,7 +394,6 @@ let SWIPE_X=0;
 
 function articleHTML(item){
   const url=shareUrl(item);
-
   return `
     <div class="portal-article-inline">
       <div class="portal-article-kicker">
@@ -332,36 +401,15 @@ function articleHTML(item){
         ${item.category?`<span>•</span><span>${esc(item.category)}</span>`:''}
         ${item.location?`<span>•</span><span>📍 ${esc(item.location)}</span>`:''}
       </div>
-
       <h2>${esc(item.title||'Berita Desa Somagede')}</h2>
-
-      ${item.excerpt
-        ?`<p class="portal-article-lead">${esc(item.excerpt)}</p>`
-        :''}
-
+      ${item.excerpt?`<p class="portal-article-lead">${esc(item.excerpt)}</p>`:''}
       ${galleryHTML(item)}
-
-      <div class="portal-article-content">
-        ${para(item.content||item.excerpt||'')}
-      </div>
-
+      <div class="portal-article-content">${para(item.content||item.excerpt||'')}</div>
       <div class="article-social">
-        <button type="button" class="social-btn" data-like>
-          <span data-like-icon>♡</span>
-          <span>Suka</span>
-          <span class="count" data-like-count>${Number(item.like_count||0)}</span>
-        </button>
-
-        <button type="button" class="social-btn" data-go-comments>
-          💬 Komentar
-          <span class="count" data-comment-count>${Number(item.comment_count||0)}</span>
-        </button>
-
-        <button type="button" class="social-btn" data-share-toggle>
-          ↗ Bagikan
-        </button>
+        <button type="button" class="social-btn" data-like><span data-like-icon>♡</span><span>Suka</span><span class="count" data-like-count>${Number(item.like_count||0)}</span></button>
+        <button type="button" class="social-btn" data-go-comments>💬 Komentar <span class="count" data-comment-count>${Number(item.comment_count||0)}</span></button>
+        <button type="button" class="social-btn" data-share-toggle>↗ Bagikan</button>
       </div>
-
       <div class="share-panel" data-share-panel hidden>
         <button class="share-option" type="button" data-share="native">📱 Bagikan</button>
         <button class="share-option" type="button" data-share="whatsapp">WhatsApp</button>
@@ -369,51 +417,19 @@ function articleHTML(item){
         <button class="share-option" type="button" data-share="telegram">Telegram</button>
         <button class="share-option" type="button" data-share="copy">Salin Link</button>
       </div>
-
       <div class="share-url" data-share-url hidden>${esc(url)}</div>
-
       <section class="comment-section" id="komentar-berita">
-        <div class="comment-head">
-          <h3>Komentar Masyarakat</h3>
-          <small data-comment-heading>Memuat komentar…</small>
-        </div>
-
-        <div class="comment-list" data-comment-list>
-          <div class="comment-empty">Memuat komentar…</div>
-        </div>
-
+        <div class="comment-head"><h3>Komentar Masyarakat</h3><small data-comment-heading>Memuat komentar…</small></div>
+        <div class="comment-list" data-comment-list><div class="comment-empty">Memuat komentar…</div></div>
         <div class="comment-form-wrap">
           <h4>Tulis Komentar</h4>
-          <p class="privacy-note">
-            Nama akan ditampilkan bersama komentar. Alamat email wajib diisi untuk identifikasi/moderasi dan tidak ditampilkan kepada publik.
-            Komentar baru tampil setelah disetujui pengelola.
-          </p>
-
+          <p class="privacy-note">Nama akan ditampilkan bersama komentar. Alamat email wajib diisi untuk identifikasi/moderasi dan tidak ditampilkan kepada publik. Komentar baru tampil setelah disetujui pengelola.</p>
           <form class="comment-form" data-comment-form>
-            <div class="comment-field">
-              <label>Nama *</label>
-              <input name="name" maxlength="80" required autocomplete="name">
-            </div>
-
-            <div class="comment-field">
-              <label>Email *</label>
-              <input name="email" type="email" maxlength="180" required autocomplete="email">
-            </div>
-
-            <div class="comment-field full">
-              <label>Komentar *</label>
-              <textarea name="comment" maxlength="2000" required placeholder="Tulis komentar dengan bahasa yang santun…"></textarea>
-            </div>
-
-            <div class="honeypot" aria-hidden="true">
-              <label>Website</label>
-              <input name="website" tabindex="-1" autocomplete="off">
-            </div>
-
-            <div class="comment-submit-row">
-              <button type="submit" class="btn green">Kirim Komentar</button>
-              <span class="comment-message" data-comment-message></span>
-            </div>
+            <div class="comment-field"><label>Nama *</label><input name="name" maxlength="80" required autocomplete="name"></div>
+            <div class="comment-field"><label>Email *</label><input name="email" type="email" maxlength="180" required autocomplete="email"></div>
+            <div class="comment-field full"><label>Komentar *</label><textarea name="comment" maxlength="2000" required placeholder="Tulis komentar dengan bahasa yang santun…"></textarea></div>
+            <div class="honeypot" aria-hidden="true"><label>Website</label><input name="website" tabindex="-1" autocomplete="off"></div>
+            <div class="comment-submit-row"><button type="submit" class="btn green">Kirim Komentar</button><span class="comment-message" data-comment-message></span></div>
           </form>
         </div>
       </section>
@@ -423,27 +439,13 @@ function articleHTML(item){
 function latestHTML(){
   return `
     <div class="portal-side-section">
-      <div class="portal-side-heading">
-        <span>Berita Terbaru</span>
-        <small>${esc(MONTH_NAME)} · ${LATEST.length} berita</small>
-      </div>
-
+      <div class="portal-side-heading"><span>Berita Terbaru</span><small>${esc(MONTH_NAME)} · ${LATEST.length} berita</small></div>
       <div class="portal-news-list">
-        ${LATEST.length
-          ? LATEST.map(x=>`
-              <a
-                href="${esc(articleUrl(x))}"
-                class="portal-news-item ${String(x.id)===String(ACTIVE_ID)?'active':''}"
-                data-news-select="${x.id}">
-                <span class="portal-news-thumb">${sideImage(x)}</span>
-                <span>
-                  <strong>${esc(x.title)}</strong>
-                  <small>▣ ${dateID(x.activity_date)} · ♥ ${Number(x.like_count||0)} · 💬 ${Number(x.comment_count||0)}</small>
-                </span>
-              </a>
-            `).join('')
-          : `<div class="archive-loading">Belum ada berita pada ${esc(MONTH_NAME)}.</div>`
-        }
+        ${LATEST.length?LATEST.map(x=>`
+          <a href="${esc(articleUrl(x))}" class="portal-news-item ${String(x.id)===String(ACTIVE_ID)?'active':''}" data-news-select="${x.id}">
+            <span class="portal-news-thumb">${sideImage(x)}</span>
+            <span><strong>${esc(x.title)}</strong><small>▣ ${dateID(x.activity_date)} · ♥ ${Number(x.like_count||0)} · 💬 ${Number(x.comment_count||0)}</small></span>
+          </a>`).join(''):`<div class="archive-loading">Belum ada berita pada ${esc(MONTH_NAME)}.</div>`}
       </div>
     </div>`;
 }
@@ -451,65 +453,37 @@ function latestHTML(){
 function archiveHTML(){
   return `
     <div class="portal-side-section">
-      <div class="portal-side-heading">
-        <span>Arsip Berita</span>
-        <small>per tahun</small>
-      </div>
-
+      <div class="portal-side-heading"><span>Arsip Berita</span><small>per tahun</small></div>
       <div class="archive-years">
         ${YEARS.map(y=>{
           const year=String(y.year);
           const opened=openYears.has(year);
           const items=archiveCache.get(year);
-
           return `
             <div class="archive-year">
               <button type="button" class="archive-year-btn" data-year="${esc(year)}">
                 <span>${opened?'▾':'▸'} ${esc(year)}</span>
-                <span>${
-                  archiveCache.has(year)
-                    ? archiveCache.get(year).length
-                    : Number(y.total||0)
-                } arsip</span>
+                <span>${archiveCache.has(year)?archiveCache.get(year).length:Number(y.total||0)} arsip</span>
               </button>
-
-              ${opened?`
-                <div class="archive-year-items">
-                  ${items
-                    ? items.length
-                      ? items.map(x=>`
-                          <a
-                            href="${esc(articleUrl(x))}"
-                            class="archive-item ${String(x.id)===String(ACTIVE_ID)?'active':''}"
-                            data-news-select="${x.id}">
-                            <span class="archive-item-date">${dateID(x.activity_date)}</span>
-                            <span class="archive-item-title">${esc(x.title)}</span>
-                          </a>
-                        `).join('')
-                      : '<div class="archive-loading">Tidak ada berita.</div>'
-                    : ''
-                  }
-                </div>`:''}
+              ${opened?`<div class="archive-year-items">${items?items.length?items.map(x=>`
+                <a href="${esc(articleUrl(x))}" class="archive-item ${String(x.id)===String(ACTIVE_ID)?'active':''}" data-news-select="${x.id}">
+                  <span class="archive-item-date">${dateID(x.activity_date)}</span>
+                  <span class="archive-item-title">${esc(x.title)}</span>
+                </a>`).join(''):'<div class="archive-loading">Tidak ada berita.</div>':''}</div>`:''}
             </div>`;
         }).join('')}
       </div>
     </div>`;
 }
 
-function sideHTML(){
-  return `${latestHTML()}${archiveHTML()}`;
-}
+function sideHTML(){return `${latestHTML()}${archiveHTML()}`;}
 
 function buildShell(){
   mount.innerHTML=`
     <div class="portal-news-layout">
       <article class="portal-news-main" id="portalArticle" aria-live="polite"></article>
-
-      <aside class="portal-news-side">
-        <div id="portalSide">${sideHTML()}</div>
-      </aside>
+      <aside class="portal-news-side"><div id="portalSide">${sideHTML()}</div></aside>
     </div>`;
-
   if(!document.getElementById('portalToast')){
     const t=document.createElement('div');
     t.className='portal-toast';
@@ -518,67 +492,31 @@ function buildShell(){
   }
 }
 
-function refreshSide(){
-  const root=document.getElementById('portalSide');
-  if(root)root.innerHTML=sideHTML();
-}
-
-function toast(message){
-  const t=document.getElementById('portalToast');
-  if(!t)return;
-  t.textContent=message;
-  t.classList.add('show');
-  clearTimeout(toast._timer);
-  toast._timer=setTimeout(()=>t.classList.remove('show'),2200);
-}
+function refreshSide(){const root=document.getElementById('portalSide');if(root)root.innerHTML=sideHTML();}
+function toast(message){const t=document.getElementById('portalToast');if(!t)return;t.textContent=message;t.classList.add('show');clearTimeout(toast._timer);toast._timer=setTimeout(()=>t.classList.remove('show'),2200);}
 
 function renderComments(items){
   const list=document.querySelector('[data-comment-list]');
   const heading=document.querySelector('[data-comment-heading]');
   const countEls=document.querySelectorAll('[data-comment-count]');
-
-  if(heading){
-    heading.textContent=`${items.length} komentar disetujui`;
-  }
-
+  if(heading)heading.textContent=`${items.length} komentar disetujui`;
   countEls.forEach(el=>el.textContent=String(items.length));
-
   if(!list)return;
-
-  list.innerHTML=items.length
-    ? items.map(c=>`
-        <article class="comment-card">
-          <div class="comment-card-top">
-            <strong>${esc(c.name)}</strong>
-            <time>${dateTimeID(c.created_at)}</time>
-          </div>
-          <p>${esc(c.comment)}</p>
-        </article>
-      `).join('')
-    : '<div class="comment-empty">Belum ada komentar yang ditampilkan. Jadilah yang pertama mengirim komentar.</div>';
+  list.innerHTML=items.length?items.map(c=>`
+    <article class="comment-card"><div class="comment-card-top"><strong>${esc(c.name)}</strong><time>${dateTimeID(c.created_at)}</time></div><p>${esc(c.comment)}</p></article>`).join(''):'<div class="comment-empty">Belum ada komentar yang ditampilkan. Jadilah yang pertama mengirim komentar.</div>';
 }
 
 async function loadSocial(id){
   try{
-    const r=await fetch(
-      `${API}/api/activities/${encodeURIComponent(id)}/social?client_id=${encodeURIComponent(clientId)}`,
-      {cache:'default'}
-    );
+    const r=await fetch(`${API}/api/activities/${encodeURIComponent(id)}/social?client_id=${encodeURIComponent(clientId)}`,{cache:'default'});
     const d=await r.json();
-
     if(!r.ok||!d.ok)throw new Error(d.error||'Gagal memuat interaksi');
-
     const likeBtn=document.querySelector('[data-like]');
     const likeCount=document.querySelector('[data-like-count]');
     const likeIcon=document.querySelector('[data-like-icon]');
-
-    if(likeBtn){
-      likeBtn.dataset.liked=d.liked?'1':'0';
-      likeBtn.classList.toggle('liked',Boolean(d.liked));
-    }
+    if(likeBtn){likeBtn.dataset.liked=d.liked?'1':'0';likeBtn.classList.toggle('liked',Boolean(d.liked));}
     if(likeCount)likeCount.textContent=String(d.likes||0);
     if(likeIcon)likeIcon.textContent=d.liked?'♥':'♡';
-
     renderComments(d.comments||[]);
   }catch(err){
     console.error(err);
@@ -591,10 +529,7 @@ function prefetchDetails(items,limit=12){
   const task=async()=>{
     for(const x of (items||[]).slice(0,limit)){
       if(!x?.id || detailCache.has(String(x.id)))continue;
-      try{
-        const item=await getDetail(x.id);
-        preloadArticleImages(item);
-      }catch{}
+      try{const item=await getDetail(x.id);preloadArticleImages(item);}catch{}
     }
   };
   if('requestIdleCallback' in window)requestIdleCallback(()=>task(),{timeout:1200});
@@ -624,400 +559,155 @@ async function selectNews(id,{scroll=false,updateUrl=true}={}){
   try{
     const key=String(id);
     const cached=detailCache.get(key);
-
-    if(scroll){
-      document.getElementById('portalArticle')?.scrollIntoView({behavior:'auto',block:'start'});
-    }
-
+    if(scroll)document.getElementById('portalArticle')?.scrollIntoView({behavior:'auto',block:'start'});
     if(cached){
-      CURRENT=cached;
-      ACTIVE_ID=String(cached.id);
-      renderArticle(cached);
-      refreshSide();
-      loadSocial(cached.id);
-      if(updateUrl)updateBrowserUrl(cached);
-      return;
+      CURRENT=cached;ACTIVE_ID=String(cached.id);renderArticle(cached);refreshSide();loadSocial(cached.id);if(updateUrl)updateBrowserUrl(cached);return;
     }
-
-    // Jangan biarkan artikel lama tampak sebagai bayangan saat pindah berita.
     clearArticleForSwitch();
-
     const item=await getDetail(id);
-    CURRENT=item;
-    ACTIVE_ID=String(item.id);
-    renderArticle(item);
-    refreshSide();
-    loadSocial(item.id);
-    if(updateUrl)updateBrowserUrl(item);
+    CURRENT=item;ACTIVE_ID=String(item.id);renderArticle(item);refreshSide();loadSocial(item.id);if(updateUrl)updateBrowserUrl(item);
   }catch(err){
     console.error(err);
     const root=document.getElementById('portalArticle');
-    if(root){
-      root.classList.remove('is-switching');
-      root.style.minHeight='';
-      root.innerHTML=`<div class="portal-news-empty"><b>Berita belum dapat dimuat.</b><br>Periksa koneksi internet lalu coba lagi.</div>`;
-    }
+    if(root){root.classList.remove('is-switching');root.style.minHeight='';root.innerHTML=`<div class="portal-news-empty"><b>Berita belum dapat dimuat.</b><br>Periksa koneksi internet lalu coba lagi.</div>`;}
   }
 }
 
 async function selectNewsBySlug(slug){
   try{
     const item=await getDetailBySlug(slug);
-    CURRENT=item;
-    ACTIVE_ID=String(item.id);
-
-    renderArticle(item);
-
-    refreshSide();
-    loadSocial(item.id);
-    updateBrowserUrl(item);
-    applyArticleSEO(item);
-
-    // Deep link harus berhenti tepat di artikel, tanpa animasi/jeda.
-    requestAnimationFrame(()=>{
-      document.getElementById('portalArticle')?.scrollIntoView({
-        behavior:'auto',
-        block:'start'
-      });
-    });
-  }catch(err){
-    console.error(err);
-    if(LATEST[0])await selectNews(LATEST[0].id,{updateUrl:false});
-  }
+    CURRENT=item;ACTIVE_ID=String(item.id);renderArticle(item);refreshSide();loadSocial(item.id);updateBrowserUrl(item);applyArticleSEO(item);
+    requestAnimationFrame(()=>document.getElementById('portalArticle')?.scrollIntoView({behavior:'auto',block:'start'}));
+  }catch(err){console.error(err);if(LATEST[0])await selectNews(LATEST[0].id,{updateUrl:false});}
 }
 
 async function toggleYear(year){
   year=String(year);
-
-  if(openYears.has(year)){
-    openYears.delete(year);
-    refreshSide();
-    return;
-  }
-
+  if(openYears.has(year)){openYears.delete(year);refreshSide();return;}
   if(!archiveCache.has(year)){
     try{
       const r=await fetch(`${API}/api/archive/${encodeURIComponent(year)}`,{cache:'default'});
       const d=await r.json();
       if(!r.ok||!d.ok)throw new Error(d.error||'Gagal memuat arsip');
-      archiveCache.set(year,d.items||[]);
-      prefetchDetails(d.items||[],8);
-    }catch(err){
-      console.error(err);
-      archiveCache.set(year,[]);
-    }
+      const sortedItems=newestActivityFirst(d.items||[]);
+      archiveCache.set(year,sortedItems);
+      prefetchDetails(sortedItems,8);
+    }catch(err){console.error(err);archiveCache.set(year,[]);}
   }
-
-  openYears.add(year);
-  refreshSide();
+  openYears.add(year);refreshSide();
 }
 
 async function toggleLike(){
   if(!CURRENT)return;
-
   const btn=document.querySelector('[data-like]');
   const liked=btn?.dataset.liked==='1';
-
   try{
     const url=`${API}/api/activities/${CURRENT.id}/like`;
-
-    const r=await fetch(
-      liked
-        ? `${url}?client_id=${encodeURIComponent(clientId)}`
-        : url,
-      liked
-        ? {method:'DELETE'}
-        : {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({client_id:clientId})
-          }
-    );
-
+    const r=await fetch(liked?`${url}?client_id=${encodeURIComponent(clientId)}`:url,liked?{method:'DELETE'}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_id:clientId})});
     const d=await r.json();
-
     if(!r.ok||!d.ok)throw new Error(d.error||'Gagal menyimpan reaksi');
-
     const likeCount=document.querySelector('[data-like-count]');
     const likeIcon=document.querySelector('[data-like-icon]');
-
-    if(btn){
-      btn.dataset.liked=d.liked?'1':'0';
-      btn.classList.toggle('liked',Boolean(d.liked));
-    }
+    if(btn){btn.dataset.liked=d.liked?'1':'0';btn.classList.toggle('liked',Boolean(d.liked));}
     if(likeCount)likeCount.textContent=String(d.likes||0);
     if(likeIcon)likeIcon.textContent=d.liked?'♥':'♡';
-
     CURRENT.like_count=Number(d.likes||0);
-
-    const latest=LATEST.find(x=>String(x.id)===String(CURRENT.id));
-    if(latest)latest.like_count=CURRENT.like_count;
-    const pub=ALL_PUBLIC.find(x=>String(x.id)===String(CURRENT.id));
-    if(pub)pub.like_count=CURRENT.like_count;
-
-    toast(d.liked?'Terima kasih atas reaksinya.':'Reaksi dibatalkan.');
-    refreshSide();
-  }catch(err){
-    toast(err.message||'Reaksi belum dapat disimpan.');
-  }
+    const latest=LATEST.find(x=>String(x.id)===String(CURRENT.id));if(latest)latest.like_count=CURRENT.like_count;
+    const pub=ALL_PUBLIC.find(x=>String(x.id)===String(CURRENT.id));if(pub)pub.like_count=CURRENT.like_count;
+    toast(d.liked?'Terima kasih atas reaksinya.':'Reaksi dibatalkan.');refreshSide();
+  }catch(err){toast(err.message||'Reaksi belum dapat disimpan.');}
 }
 
 async function submitComment(form){
   if(!CURRENT)return;
-
   const message=form.querySelector('[data-comment-message]');
   const fd=new FormData(form);
-
-  const payload={
-    name:String(fd.get('name')||'').trim(),
-    email:String(fd.get('email')||'').trim(),
-    comment:String(fd.get('comment')||'').trim(),
-    website:String(fd.get('website')||'').trim(),
-    client_id:clientId
-  };
-
-  if(message){
-    message.className='comment-message';
-    message.textContent='Mengirim komentar…';
-  }
-
+  const payload={name:String(fd.get('name')||'').trim(),email:String(fd.get('email')||'').trim(),comment:String(fd.get('comment')||'').trim(),website:String(fd.get('website')||'').trim(),client_id:clientId};
+  if(message){message.className='comment-message';message.textContent='Mengirim komentar…';}
   try{
-    const r=await fetch(`${API}/api/activities/${CURRENT.id}/comments`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    });
-
+    const r=await fetch(`${API}/api/activities/${CURRENT.id}/comments`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const d=await r.json();
-
     if(!r.ok||!d.ok)throw new Error(d.error||'Komentar gagal dikirim');
-
     form.querySelector('[name="comment"]').value='';
-
-    if(message){
-      message.className='comment-message ok';
-      message.textContent=d.message||'Komentar dikirim dan menunggu moderasi.';
-    }
-  }catch(err){
-    if(message){
-      message.className='comment-message error';
-      message.textContent=err.message||'Komentar belum dapat dikirim.';
-    }
-  }
+    if(message){message.className='comment-message ok';message.textContent=d.message||'Komentar dikirim dan menunggu moderasi.';}
+  }catch(err){if(message){message.className='comment-message error';message.textContent=err.message||'Komentar belum dapat dikirim.';}}
 }
 
 async function doShare(type){
   if(!CURRENT)return;
-
   const url=shareUrl(CURRENT);
   const title=CURRENT.title||'Berita BPD Desa Somagede';
   const text=`${title} — BPD Desa Somagede`;
-
   try{
-    if(type==='native' && navigator.share){
-      await navigator.share({title,text,url});
-      return;
-    }
-
-    if(type==='whatsapp'){
-      window.open(`https://wa.me/?text=${encodeURIComponent(text+'\n'+url)}`,'_blank','noopener');
-      return;
-    }
-
-    if(type==='facebook'){
-      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,'_blank','noopener');
-      return;
-    }
-
-    if(type==='telegram'){
-      window.open(
-        `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
-        '_blank','noopener'
-      );
-      return;
-    }
-
-    await navigator.clipboard.writeText(url);
-    toast('Link berita berhasil disalin.');
-  }catch(err){
-    try{
-      await navigator.clipboard.writeText(url);
-      toast('Link berita berhasil disalin.');
-    }catch{
-      toast('Bagikan link belum tersedia pada browser ini.');
-    }
-  }
+    if(type==='native' && navigator.share){await navigator.share({title,text,url});return;}
+    if(type==='whatsapp'){window.open(`https://wa.me/?text=${encodeURIComponent(text+'\n'+url)}`,'_blank','noopener');return;}
+    if(type==='facebook'){window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,'_blank','noopener');return;}
+    if(type==='telegram'){window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,'_blank','noopener');return;}
+    await navigator.clipboard.writeText(url);toast('Link berita berhasil disalin.');
+  }catch(err){try{await navigator.clipboard.writeText(url);toast('Link berita berhasil disalin.');}catch{toast('Bagikan link belum tersedia pada browser ini.');}}
 }
 
 mount.addEventListener('click',e=>{
-  const prev=e.target.closest('[data-insta-prev]');
-  if(prev){
-    e.preventDefault();
-    const g=prev.closest('[data-insta-gallery]');
-    if(g)setInstaGallery(g,Number(g.dataset.index||0)-1);
-    return;
-  }
-
-  const next=e.target.closest('[data-insta-next]');
-  if(next){
-    e.preventDefault();
-    const g=next.closest('[data-insta-gallery]');
-    if(g)setInstaGallery(g,Number(g.dataset.index||0)+1);
-    return;
-  }
-
-  const dot=e.target.closest('[data-insta-dot]');
-  if(dot){
-    e.preventDefault();
-    const g=dot.closest('[data-insta-gallery]');
-    if(g)setInstaGallery(g,Number(dot.dataset.instaDot||0));
-    return;
-  }
-
-  const news=e.target.closest('[data-news-select]');
-  if(news){
-    e.preventDefault();
-    selectNews(news.dataset.newsSelect,{scroll:true,updateUrl:true});
-    return;
-  }
-
-  const year=e.target.closest('[data-year]');
-  if(year){
-    e.preventDefault();
-    toggleYear(year.dataset.year);
-    return;
-  }
-
-  if(e.target.closest('[data-like]')){
-    e.preventDefault();
-    toggleLike();
-    return;
-  }
-
-  if(e.target.closest('[data-go-comments]')){
-    e.preventDefault();
-    document.getElementById('komentar-berita')?.scrollIntoView({
-      behavior:'smooth',
-      block:'start'
-    });
-    return;
-  }
-
-  if(e.target.closest('[data-share-toggle]')){
-    e.preventDefault();
-    const panel=document.querySelector('[data-share-panel]');
-    const url=document.querySelector('[data-share-url]');
-    if(panel){
-      panel.hidden=!panel.hidden;
-      if(url)url.hidden=panel.hidden;
-    }
-    return;
-  }
-
-  const share=e.target.closest('[data-share]');
-  if(share){
-    e.preventDefault();
-    doShare(share.dataset.share);
-  }
+  const prev=e.target.closest('[data-insta-prev]');if(prev){e.preventDefault();const g=prev.closest('[data-insta-gallery]');if(g)setInstaGallery(g,Number(g.dataset.index||0)-1);return;}
+  const next=e.target.closest('[data-insta-next]');if(next){e.preventDefault();const g=next.closest('[data-insta-gallery]');if(g)setInstaGallery(g,Number(g.dataset.index||0)+1);return;}
+  const dot=e.target.closest('[data-insta-dot]');if(dot){e.preventDefault();const g=dot.closest('[data-insta-gallery]');if(g)setInstaGallery(g,Number(dot.dataset.instaDot||0));return;}
+  const news=e.target.closest('[data-news-select]');if(news){e.preventDefault();selectNews(news.dataset.newsSelect,{scroll:true,updateUrl:true});return;}
+  const year=e.target.closest('[data-year]');if(year){e.preventDefault();toggleYear(year.dataset.year);return;}
+  if(e.target.closest('[data-like]')){e.preventDefault();toggleLike();return;}
+  if(e.target.closest('[data-go-comments]')){e.preventDefault();document.getElementById('komentar-berita')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
+  if(e.target.closest('[data-share-toggle]')){e.preventDefault();const panel=document.querySelector('[data-share-panel]');const url=document.querySelector('[data-share-url]');if(panel){panel.hidden=!panel.hidden;if(url)url.hidden=panel.hidden;}return;}
+  const share=e.target.closest('[data-share]');if(share){e.preventDefault();doShare(share.dataset.share);}
 });
 
-mount.addEventListener('pointerdown',e=>{
-  const g=e.target.closest('[data-insta-gallery]');
-  if(!g)return;
-  SWIPE_GALLERY=g;
-  SWIPE_X=e.clientX;
-},{passive:true});
-
-mount.addEventListener('pointerup',e=>{
-  if(!SWIPE_GALLERY)return;
-  const dx=e.clientX-SWIPE_X;
-  const g=SWIPE_GALLERY;
-  SWIPE_GALLERY=null;
-  if(Math.abs(dx)<42)return;
-  setInstaGallery(g,Number(g.dataset.index||0)+(dx<0?1:-1));
-},{passive:true});
-
+mount.addEventListener('pointerdown',e=>{const g=e.target.closest('[data-insta-gallery]');if(!g)return;SWIPE_GALLERY=g;SWIPE_X=e.clientX;},{passive:true});
+mount.addEventListener('pointerup',e=>{if(!SWIPE_GALLERY)return;const dx=e.clientX-SWIPE_X;const g=SWIPE_GALLERY;SWIPE_GALLERY=null;if(Math.abs(dx)<42)return;setInstaGallery(g,Number(g.dataset.index||0)+(dx<0?1:-1));},{passive:true});
 mount.addEventListener('pointercancel',()=>{SWIPE_GALLERY=null},{passive:true});
-
-mount.addEventListener('submit',e=>{
-  const form=e.target.closest('[data-comment-form]');
-  if(!form)return;
-  e.preventDefault();
-  submitComment(form);
-});
+mount.addEventListener('submit',e=>{const form=e.target.closest('[data-comment-form]');if(!form)return;e.preventDefault();submitComment(form);});
 
 async function load(){
   buildShell();
-
   try{
     const [latestRes,yearRes]=await Promise.all([
       fetch(`${API}/api/activities?limit=100`,{cache:'default'}),
       fetch(`${API}/api/archive`,{cache:'default'})
     ]);
-
     const latestData=await latestRes.json();
     const yearData=await yearRes.json();
+    if(!latestRes.ok||!latestData.ok)throw new Error(latestData.error||'Gagal memuat berita');
 
-    if(!latestRes.ok||!latestData.ok){
-      throw new Error(latestData.error||'Gagal memuat berita');
-    }
-
-    ALL_PUBLIC=latestData.items||[];
+    ALL_PUBLIC=newestActivityFirst(latestData.items||[]);
     LATEST=ALL_PUBLIC.filter(isCurrentMonth);
     prefetchDetails(LATEST.length?LATEST:ALL_PUBLIC,12);
-    const apiYears=yearRes.ok&&yearData.ok ? (yearData.years||[]) : [];
+
+    const apiYears=yearRes.ok&&yearData.ok?(yearData.years||[]):[];
     const totals=new Map(apiYears.map(y=>[String(y.year),Number(y.total||0)]));
     YEARS=[];
-    for(let y=Number(CURRENT_YEAR);y>=2020;y--){
-      YEARS.push({year:String(y),total:totals.get(String(y))||0});
-    }
-    apiYears.forEach(y=>{
-      const year=String(y.year);
-      if(!YEARS.some(x=>String(x.year)===year)){
-        YEARS.push({year,total:Number(y.total||0)});
-      }
-    });
+    for(let y=Number(CURRENT_YEAR);y>=2020;y--)YEARS.push({year:String(y),total:totals.get(String(y))||0});
+    apiYears.forEach(y=>{const year=String(y.year);if(!YEARS.some(x=>String(x.year)===year))YEARS.push({year,total:Number(y.total||0)});});
     YEARS.sort((a,b)=>Number(b.year)-Number(a.year));
 
     if(YEARS[0]?.year){
       openYears.add(String(YEARS[0].year));
-      // Arsip tahun terbaru dimuat di latar belakang.
-      fetch(`${API}/api/archive/${encodeURIComponent(YEARS[0].year)}`,{
-        cache:'default'
-      }).then(r=>r.json()).then(d=>{
-        if(d.ok){
-          archiveCache.set(String(YEARS[0].year),d.items||[]);
-          prefetchDetails(d.items||[],8);
-          refreshSide();
-        }
-      }).catch(()=>{});
+      fetch(`${API}/api/archive/${encodeURIComponent(YEARS[0].year)}`,{cache:'default'})
+        .then(r=>r.json())
+        .then(d=>{
+          if(d.ok){
+            const sortedItems=newestActivityFirst(d.items||[]);
+            archiveCache.set(String(YEARS[0].year),sortedItems);
+            prefetchDetails(sortedItems,8);
+            refreshSide();
+          }
+        }).catch(()=>{});
     }
 
     const slug=new URL(location.href).searchParams.get('berita');
-
-    if(slug){
-      await selectNewsBySlug(slug);
-      return;
-    }
-
-    if(LATEST[0]){
-      await selectNews(LATEST[0].id,{updateUrl:false});
-    }else if(ALL_PUBLIC[0]){
-      // Jika bulan berjalan belum memiliki berita, kolom kiri tetap menampilkan
-      // berita publik paling baru, tetapi panel Berita Terbaru tetap kosong
-      // dan berita tersebut berada di Arsip.
-      await selectNews(ALL_PUBLIC[0].id,{updateUrl:false});
-    }else{
-      document.getElementById('portalArticle').innerHTML=
-        '<div class="portal-news-empty">Belum ada berita yang dipublikasikan.</div>';
-    }
+    if(slug){await selectNewsBySlug(slug);return;}
+    if(LATEST[0])await selectNews(LATEST[0].id,{updateUrl:false});
+    else if(ALL_PUBLIC[0])await selectNews(ALL_PUBLIC[0].id,{updateUrl:false});
+    else document.getElementById('portalArticle').innerHTML='<div class="portal-news-empty">Belum ada berita yang dipublikasikan.</div>';
   }catch(err){
     console.error(err);
-    mount.innerHTML=`
-      <div class="portal-news-empty">
-        <b>Portal berita belum dapat dimuat.</b><br>
-        Periksa koneksi internet lalu muat ulang halaman.
-      </div>`;
+    mount.innerHTML=`<div class="portal-news-empty"><b>Portal berita belum dapat dimuat.</b><br>Periksa koneksi internet lalu muat ulang halaman.</div>`;
   }
 }
 

@@ -26,7 +26,7 @@ PAKET INI MENAMBAHKAN:
    - Telegram
    - Salin Link
 9. LINK UNIK BERITA:
-   https://bpdsomagede.github.io/DesaSomagede/?berita=judul-berita-YYYYMMDD
+   https://bpdsomagede.github.io/?berita=judul-berita-YYYYMMDD
    Berita baru memakai slug yang bersih dan stabil.
 10. D1 OTOMATIS:
     Tabel komentar dan reaction dibuat otomatis oleh Worker. TIDAK PERLU menjalankan SQL manual.
@@ -51,7 +51,7 @@ TIDAK PERLU:
 - menambah Secret baru
 
 B. GITHUB
-Upload/timpa ke ROOT repository BPDSomagede/DesaSomagede:
+Upload/timpa ke ROOT repository BPDSomagede:
 1. index.html
 2. editor.html
 3. bpd-portal-berita.js

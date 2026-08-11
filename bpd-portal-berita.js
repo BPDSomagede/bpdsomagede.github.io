@@ -6,7 +6,7 @@ const API='https://bpd-somagede-cms.bpddesasomagede.workers.dev';
 const HOME_SEO={
   title:'BPD Somagede | Badan Permusyawaratan Desa Somagede',
   description:'Portal BPD Somagede, Kecamatan Somagede, Kabupaten Banyumas: informasi BPD, pemerintahan desa, regulasi, pembangunan, anggaran, dokumen publik, aspirasi masyarakat, administrasi desa, dan berita kegiatan.',
-  canonical:'https://bpdsomagede.github.io/DesaSomagede/'
+  canonical:'https://bpdsomagede.github.io/'
 };
 
 function upsertMeta(selector,attrs){
@@ -82,10 +82,10 @@ function applyArticleSEO(item){
       '@type':'GovernmentOrganization',
       name:'BPD Somagede',
       alternateName:'Badan Permusyawaratan Desa Somagede',
-      url:'https://bpdsomagede.github.io/DesaSomagede/',
+      url:'https://bpdsomagede.github.io/',
       logo:{
         '@type':'ImageObject',
-        url:'https://bpdsomagede.github.io/DesaSomagede/bpd-favicon.png'
+        url:'https://bpdsomagede.github.io/bpd-favicon.png'
       }
     }
   });

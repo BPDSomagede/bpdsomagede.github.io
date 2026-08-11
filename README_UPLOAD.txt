@@ -10,7 +10,7 @@ Isi paket ini sudah mencakup:
 
 CARA UPLOAD:
 1. Ekstrak file ZIP.
-2. Buka repository GitHub BPDSomagede/DesaSomagede.
+2. Buka repository GitHub BPDSomagede.
 3. Hapus isi lama agar tidak ada file ganda.
 4. Klik Add file > Upload files.
 5. Seret seluruh ISI folder DesaSomagede ke area upload, bukan folder ZIP-nya.
@@ -18,4 +18,4 @@ CARA UPLOAD:
 7. Tunggu GitHub Pages memperbarui situs.
 
 Alamat website:
-https://bpdsomagede.github.io/DesaSomagede/
+https://bpdsomagede.github.io/

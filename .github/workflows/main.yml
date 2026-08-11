@@ -1,89 +1,84 @@
-name: Finalisasi URL BPD Somagede
+name: Aktifkan Video Audio BPD Somagede
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/main.yml'
 
 permissions:
   contents: write
 
 jobs:
-  finalisasi-url:
+  aktifkan-media:
     runs-on: ubuntu-latest
 
     steps:
       - name: Ambil isi repository
         uses: actions/checkout@v4
 
-      - name: Rapikan URL website
+      - name: Pasang addon video dan audio tanpa mengubah desain
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          replacements = [
-              ("https://bpdsomagede.github.io/DesaSomagede/",
-               "https://bpdsomagede.github.io/"),
-
-              ("https://bpdsomagede.github.io/DesaSomagede",
-               "https://bpdsomagede.github.io"),
-
-              ("/DesaSomagede/",
-               "/"),
-
-              ("/DesaSomagede",
-               "")
-          ]
-
-          extensions = {
-              ".html", ".htm", ".js", ".css",
-              ".xml", ".json", ".txt",
-              ".webmanifest", ".md"
+          patches = {
+              Path('editor.html'): '<script src="bpd-editor-media-addon.js?v=20260811"></script>',
+              Path('index.html'): '<script src="bpd-portal-media-addon.js?v=20260811"></script>',
           }
 
           changed = []
 
-          for p in Path(".").rglob("*"):
-              if not p.is_file():
+          for path, tag in patches.items():
+              if not path.exists():
+                  raise SystemExit(f'File wajib tidak ditemukan: {path}')
+
+              text = path.read_text(encoding='utf-8')
+              if tag in text:
+                  print(f'{path}: addon sudah terpasang')
                   continue
 
-              if ".git" in p.parts or ".github" in p.parts:
-                  continue
+              marker = '</body>'
+              if marker not in text:
+                  raise SystemExit(f'Tag </body> tidak ditemukan di {path}')
 
-              if p.suffix.lower() not in extensions:
-                  continue
+              text = text.replace(marker, tag + '\n' + marker, 1)
+              path.write_text(text, encoding='utf-8')
+              changed.append(str(path))
+              print(f'{path}: addon dipasang')
 
+          # Pengamanan alamat final: jangan biarkan URL lama kembali.
+          for path in Path('.').rglob('*'):
+              if not path.is_file() or '.git' in path.parts or '.github' in path.parts:
+                  continue
+              if path.suffix.lower() not in {'.html','.htm','.js','.css','.xml','.json','.txt','.webmanifest','.md'}:
+                  continue
               try:
-                  text = p.read_text(encoding="utf-8")
-              except:
+                  text = path.read_text(encoding='utf-8')
+              except Exception:
                   continue
+              new = text.replace('https://bpdsomagede.github.io/DesaSomagede/','https://bpdsomagede.github.io/')
+              new = new.replace('https://bpdsomagede.github.io/DesaSomagede','https://bpdsomagede.github.io')
+              new = new.replace('/DesaSomagede/','/').replace('/DesaSomagede','')
+              if new != text:
+                  path.write_text(new, encoding='utf-8')
+                  if str(path) not in changed:
+                      changed.append(str(path))
 
-              new_text = text
-
-              for old, new in replacements:
-                  new_text = new_text.replace(old, new)
-
-              if new_text != text:
-                  p.write_text(new_text, encoding="utf-8")
-                  changed.append(str(p))
-
-          print("FILE YANG DIPERBARUI:")
-          for item in changed:
-              print(" -", item)
-
-          print("")
-          print("SELESAI — konten dan desain tidak diubah.")
+          print('File diperbarui:', ', '.join(changed) if changed else 'tidak ada')
           PY
 
       - name: Simpan perubahan
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add -A
+          git add editor.html index.html
 
           if git diff --cached --quiet; then
-            echo "Semua URL sudah benar. Tidak ada perubahan."
+            echo "Addon sudah aktif. Tidak ada perubahan tambahan."
             exit 0
           fi
 
-          git commit -m "Rapikan SEO sitemap canonical dan internal links"
+          git commit -m "Aktifkan dukungan video dan audio berita"
           git push

@@ -96,89 +96,187 @@ const mount=document.getElementById('bpdPortalBerita');
 if(!mount) return;
 
 /* =========================================================
-   PENYEMPURNAAN BERANDA 11 AGUSTUS 2026
+   PENYEMPURNAAN BERANDA 11 AGUSTUS 2026 — FIX HEADER V2
    - Judul Berita Terbaru dan isi Arsip menggunakan bobot normal
-   - Header utama lebih ringkas dan proporsional
+   - Header utama dideteksi dari struktur halaman, tidak bergantung .hero h2
    ========================================================= */
+function normalizeHeroText(value){
+  return String(value||'').replace(/\s+/g,' ').trim().toLowerCase();
+}
+
+function findHomepageHeroTitle(){
+  const excluded='nav,footer,aside,#bpdPortalBerita,.portal-side,.modal,.drawer,[role="dialog"]';
+  const isAllowed=(el)=>{
+    if(!el || el.closest(excluded))return false;
+    const text=normalizeHeroText(el.textContent);
+    return text.length>=4 && text.length<=220;
+  };
+
+  const candidates=[...document.querySelectorAll(
+    'h1,h2,h3,.hero-title,.hero__title,.banner-title,.banner__title,.masthead-title,.headline-title'
+  )].filter(isAllowed);
+
+  const exact=candidates.find(el=>{
+    const text=normalizeHeroText(el.textContent);
+    return (
+      (text.includes('bersama') && text.includes('masyarakat')) ||
+      (text.includes('mengawal') && text.includes('pembangunan')) ||
+      text.includes('pembangunan desa')
+    );
+  });
+  if(exact)return exact;
+
+  const selectors=[
+    '.hero h1','.hero h2','.hero h3',
+    '[class*="hero"] h1','[class*="hero"] h2','[class*="hero"] h3',
+    '.banner h1','.banner h2','.banner h3',
+    '[class*="banner"] h1','[class*="banner"] h2','[class*="banner"] h3',
+    '.masthead h1','.masthead h2','.masthead h3',
+    '.jumbotron h1','.jumbotron h2','.jumbotron h3',
+    '.cover h1','.cover h2','.cover h3',
+    'main > section:first-of-type h1',
+    'main > section:first-of-type h2',
+    'main > section:first-of-type h3'
+  ];
+  for(const selector of selectors){
+    const el=document.querySelector(selector);
+    if(isAllowed(el))return el;
+  }
+
+  const fallback=[...document.querySelectorAll('main h1,main h2,main h3')]
+    .filter(isAllowed)
+    .map(el=>{
+      const rect=el.getBoundingClientRect();
+      const style=getComputedStyle(el);
+      const fontSize=parseFloat(style.fontSize)||0;
+      let score=fontSize*5;
+      if(rect.top>=0 && rect.top<760)score+=360-(rect.top*.35);
+      if(el.tagName==='H1')score+=100;
+      else if(el.tagName==='H2')score+=65;
+      else score+=30;
+      if(rect.width>240)score+=30;
+      return {el,score};
+    })
+    .sort((a,b)=>b.score-a.score);
+  return fallback[0]?.el||null;
+}
+
+function findHomepageHeroContainer(title){
+  let node=title?.parentElement||null;
+  while(node && node!==document.body && node!==document.documentElement){
+    const cls=String(node.className||'').toLowerCase();
+    const looksHero=/(^|\s|[-_])(hero|banner|masthead|jumbotron|cover)(\s|[-_]|$)/.test(cls);
+    const isInner=/(content|title|text|caption|copy)/.test(cls);
+    if(looksHero && !isInner)return node;
+    node=node.parentElement;
+  }
+  return title?.closest('main > section,main section,section')||title?.parentElement||null;
+}
+
 function applyPortalPresentationFixes(){
-  if(!document.getElementById('bpd-home-refine-20260811')){
+  if(!document.getElementById('bpd-home-refine-20260811-v2')){
+    document.getElementById('bpd-home-refine-20260811')?.remove();
+
     const style=document.createElement('style');
-    style.id='bpd-home-refine-20260811';
+    style.id='bpd-home-refine-20260811-v2';
     style.textContent=`
-      #bpdPortalBerita .portal-news-item strong{
-        font-weight:400!important;
-      }
-      #bpdPortalBerita .portal-news-item small{
-        font-weight:400!important;
-      }
+      #bpdPortalBerita .portal-news-item strong,
+      #bpdPortalBerita .portal-news-item small,
       #bpdPortalBerita .archive-item-title,
       #bpdPortalBerita .archive-item-date{
         font-weight:400!important;
       }
 
-      .hero{
-        min-height:300px!important;
+      .bpd-hero-section-refined{
+        min-height:290px!important;
+        height:auto!important;
+        max-height:none!important;
+        padding-top:26px!important;
+        padding-bottom:26px!important;
+        box-sizing:border-box!important;
       }
-      .hero-content{
-        padding:22px 30px!important;
+      .bpd-hero-content-refined{
+        padding-top:16px!important;
+        padding-bottom:16px!important;
       }
-      .hero h2{
-        margin:8px 0 5px!important;
-        font-size:clamp(26px,3.35vw,39px)!important;
-        line-height:1.04!important;
-        letter-spacing:-.015em;
+      .bpd-hero-title-refined{
+        margin:4px 0 6px!important;
+        font-size:clamp(26px,3.25vw,39px)!important;
+        line-height:1.02!important;
+        letter-spacing:-.015em!important;
       }
-      .hero h2 .bpd-hero-line{
-        display:block;
+      .bpd-hero-title-refined .bpd-hero-line{
+        display:block!important;
       }
-      .hero h2 .bpd-hero-line-one,
-      .hero h2 .bpd-hero-line-three{
-        white-space:nowrap;
+      .bpd-hero-title-refined .bpd-hero-line-one,
+      .bpd-hero-title-refined .bpd-hero-line-three{
+        white-space:nowrap!important;
       }
-      .hero h2 .bpd-hero-line-two{
-        margin:2px 0;
-        font-weight:800;
-        font-style:italic;
+      .bpd-hero-title-refined .bpd-hero-line-two{
+        margin:3px 0!important;
+        font-weight:800!important;
+        font-style:italic!important;
       }
-      .hero p{
-        line-height:1.35!important;
+      .bpd-hero-title-refined .bpd-hero-line-two strong,
+      .bpd-hero-title-refined .bpd-hero-line-two em{
+        font-weight:800!important;
+        font-style:italic!important;
       }
 
       @media(max-width:680px){
-        .hero{
-          min-height:270px!important;
+        .bpd-hero-section-refined{
+          min-height:245px!important;
+          padding-top:18px!important;
+          padding-bottom:18px!important;
         }
-        .hero-content{
-          padding:18px 18px!important;
+        .bpd-hero-content-refined{
+          padding-top:10px!important;
+          padding-bottom:10px!important;
         }
-        .hero h2{
-          font-size:clamp(24px,8vw,32px)!important;
-          line-height:1.03!important;
+        .bpd-hero-title-refined{
+          font-size:clamp(22px,7vw,30px)!important;
+          line-height:1.02!important;
         }
       }
       @media(max-width:390px){
-        .hero{
-          min-height:255px!important;
-        }
-        .hero h2{
-          font-size:23px!important;
-        }
+        .bpd-hero-section-refined{min-height:225px!important;}
+        .bpd-hero-title-refined{font-size:21px!important;}
       }
     `;
     document.head.appendChild(style);
   }
 
-  const heroTitle=document.querySelector('.hero h2');
-  if(heroTitle && !heroTitle.dataset.bpdRefined){
-    heroTitle.innerHTML=`
-      <span class="bpd-hero-line bpd-hero-line-one">Bersama Masyarakat</span>
-      <span class="bpd-hero-line bpd-hero-line-two"><strong><em>Mengawal</em></strong></span>
-      <span class="bpd-hero-line bpd-hero-line-three">Pembangunan Desa</span>`;
-    heroTitle.dataset.bpdRefined='1';
-  }
+  const heroTitle=findHomepageHeroTitle();
+  if(!heroTitle)return false;
+
+  heroTitle.classList.add('bpd-hero-title-refined');
+  heroTitle.innerHTML=`
+    <span class="bpd-hero-line bpd-hero-line-one">Bersama Masyarakat</span>
+    <span class="bpd-hero-line bpd-hero-line-two"><strong><em>Mengawal</em></strong></span>
+    <span class="bpd-hero-line bpd-hero-line-three">Pembangunan Desa</span>`;
+  heroTitle.dataset.bpdRefined='2';
+
+  const content=heroTitle.closest(
+    '.hero-content,.hero__content,[class*="hero-content"],[class*="hero__content"],'+
+    '.banner-content,.banner__content,[class*="banner-content"],[class*="banner__content"]'
+  )||heroTitle.parentElement;
+  content?.classList.add('bpd-hero-content-refined');
+
+  const section=findHomepageHeroContainer(heroTitle);
+  section?.classList.add('bpd-hero-section-refined');
+  return true;
 }
 
-applyPortalPresentationFixes();
+function ensurePortalPresentationFixes(){
+  applyPortalPresentationFixes();
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',applyPortalPresentationFixes,{once:true});
+  }
+  window.addEventListener('load',applyPortalPresentationFixes,{once:true});
+  [180,500,1000,1800].forEach(ms=>setTimeout(applyPortalPresentationFixes,ms));
+}
+
+ensurePortalPresentationFixes();
 
 const INITIAL_SLUG=new URL(location.href).searchParams.get('berita');
 if(INITIAL_SLUG){

@@ -96,277 +96,156 @@ const mount=document.getElementById('bpdPortalBerita');
 if(!mount) return;
 
 /* =========================================================
-   PENYEMPURNAAN BERANDA — HEADER V3 / PUBLIKASI KEGIATAN
-   - Bersama Masyarakat = 3x ukuran Mengawal, tidak miring
-   - Mengawal = aksen kecil, tebal + miring
-   - Pembangunan Desa = 2x ukuran Mengawal, tidak miring
-   - Publikasi Desa -> Publikasi Kegiatan
-   - Berita Desa Somagede -> Badan Permusyawaratan Desa(BPD) Somagede
-   - Panel berita/arsip tetap normal (tidak bold) dan urut terbaru -> terlama
+   PENYEMPURNAAN BERANDA 11 AGUSTUS 2026
+   - Judul Berita Terbaru dan isi Arsip menggunakan bobot normal
+   - Header utama lebih ringkas dan proporsional
    ========================================================= */
-function normalizeHeroText(value){
-  return String(value||'').replace(/\s+/g,' ').trim().toLowerCase();
-}
-
-function findHomepageHeroTitle(){
-  const excluded='nav,footer,aside,#bpdPortalBerita,.portal-side,.modal,.drawer,[role="dialog"]';
-  const isAllowed=(el)=>{
-    if(!el || el.closest(excluded))return false;
-    const text=normalizeHeroText(el.textContent);
-    return text.length>=4 && text.length<=220;
-  };
-
-  const candidates=[...document.querySelectorAll(
-    'h1,h2,h3,.hero-title,.hero__title,.banner-title,.banner__title,.masthead-title,.headline-title'
-  )].filter(isAllowed);
-
-  const exact=candidates.find(el=>{
-    const text=normalizeHeroText(el.textContent);
-    return (
-      (text.includes('bersama') && text.includes('masyarakat')) ||
-      (text.includes('mengawal') && text.includes('pembangunan')) ||
-      text.includes('pembangunan desa')
-    );
-  });
-  if(exact)return exact;
-
-  const selectors=[
-    '.hero h1','.hero h2','.hero h3',
-    '[class*="hero"] h1','[class*="hero"] h2','[class*="hero"] h3',
-    '.banner h1','.banner h2','.banner h3',
-    '[class*="banner"] h1','[class*="banner"] h2','[class*="banner"] h3',
-    '.masthead h1','.masthead h2','.masthead h3',
-    '.jumbotron h1','.jumbotron h2','.jumbotron h3',
-    '.cover h1','.cover h2','.cover h3',
-    'main > section:first-of-type h1',
-    'main > section:first-of-type h2',
-    'main > section:first-of-type h3'
-  ];
-  for(const selector of selectors){
-    const el=document.querySelector(selector);
-    if(isAllowed(el))return el;
-  }
-
-  const fallback=[...document.querySelectorAll('main h1,main h2,main h3')]
-    .filter(isAllowed)
-    .map(el=>{
-      const rect=el.getBoundingClientRect();
-      const style=getComputedStyle(el);
-      const fontSize=parseFloat(style.fontSize)||0;
-      let score=fontSize*5;
-      if(rect.top>=0 && rect.top<760)score+=360-(rect.top*.35);
-      if(el.tagName==='H1')score+=100;
-      else if(el.tagName==='H2')score+=65;
-      else score+=30;
-      if(rect.width>240)score+=30;
-      return {el,score};
-    })
-    .sort((a,b)=>b.score-a.score);
-  return fallback[0]?.el||null;
-}
-
-function findHomepageHeroContainer(title){
-  let node=title?.parentElement||null;
-  while(node && node!==document.body && node!==document.documentElement){
-    const cls=String(node.className||'').toLowerCase();
-    const looksHero=/(^|\s|[-_])(hero|banner|masthead|jumbotron|cover)(\s|[-_]|$)/.test(cls);
-    const isInner=/(content|title|text|caption|copy)/.test(cls);
-    if(looksHero && !isInner)return node;
-    node=node.parentElement;
-  }
-  return title?.closest('main > section,main section,section')||title?.parentElement||null;
-}
-
-function refinePublicationHeading(){
-  const section=document.querySelector('#berita-desa,section.portal-news,.portal-news');
-  if(!section)return false;
-
-  const kicker=section.querySelector('.portal-news-head .kicker,.kicker');
-  if(kicker && /publikasi\s+desa/i.test(kicker.textContent||'')){
-    kicker.textContent='Publikasi Kegiatan';
-  }
-
-  const heading=section.querySelector('.portal-news-head h2,h2');
-  if(heading && /berita\s+desa\s+somagede/i.test(heading.textContent||'')){
-    heading.textContent='Badan Permusyawaratan Desa(BPD) Somagede';
-  }
-  return true;
-}
-
 function applyPortalPresentationFixes(){
-  document.getElementById('bpd-home-refine-20260811')?.remove();
-  document.getElementById('bpd-home-refine-20260811-v2')?.remove();
-
-  if(!document.getElementById('bpd-home-refine-20260812-v3')){
+  if(!document.getElementById('bpd-home-refine-20260812')){
     const style=document.createElement('style');
-    style.id='bpd-home-refine-20260812-v3';
+    style.id='bpd-home-refine-20260812';
     style.textContent=`
       #bpdPortalBerita .portal-news-item strong,
       #bpdPortalBerita .portal-news-item small,
       #bpdPortalBerita .archive-item-title,
-      #bpdPortalBerita .archive-item-date{
-        font-weight:400!important;
+      #bpdPortalBerita .archive-item-date{font-weight:400!important}
+
+      .hero{padding-top:20px!important}
+      .hero .hero-shell{
+        min-height:310px!important;
+        border-radius:28px!important
+      }
+      .hero .hero-copy{
+        position:relative!important;
+        z-index:2!important;
+        max-width:860px!important;
+        padding:38px 44px 40px!important
       }
 
-      .bpd-hero-section-refined{
-        min-height:300px!important;
-        height:auto!important;
-        max-height:none!important;
-        padding-top:22px!important;
-        padding-bottom:22px!important;
-        box-sizing:border-box!important;
+      .hero h1.bpd-hero-title-refined{
+        position:relative!important;
+        width:max-content!important;
+        max-width:100%!important;
+        margin:8px 0 18px!important;
+        padding:3px 0 5px 24px!important;
+        font-family:Merriweather,Georgia,'Times New Roman',serif!important;
+        line-height:1!important
       }
-      .bpd-hero-content-refined{
-        padding-top:12px!important;
-        padding-bottom:12px!important;
-      }
-      .bpd-hero-title-refined{
-        --bpd-hero-unit:clamp(21px,1.85vw,25px);
-        margin:2px 0 8px!important;
-        line-height:1!important;
-        letter-spacing:normal!important;
-        font-size:var(--bpd-hero-unit)!important;
-        text-wrap:balance;
-      }
-      .bpd-hero-title-refined .bpd-hero-line{
-        display:block!important;
-        width:max-content;
-        max-width:100%;
-        position:relative;
-        text-shadow:0 3px 12px rgba(0,0,0,.34);
-      }
-
-      .bpd-hero-title-refined .bpd-hero-line-one{
-        font-size:calc(var(--bpd-hero-unit) * 3)!important;
-        line-height:.94!important;
-        font-weight:950!important;
-        font-style:normal!important;
-        letter-spacing:-.035em!important;
-color:#ffffff!important;
-background:linear-gradient(90deg,#ffffff 0%,#f7fff9 45%,#9fffd7 100%);
--webkit-background-clip:text;
-background-clip:text;
--webkit-text-fill-color:transparent;
-filter:drop-shadow(0 4px 10px rgba(0,0,0,.42));       
-white-space:nowrap!important;
-        text-shadow:0 3px 14px rgba(0,0,0,.42),0 0 1px rgba(255,255,255,.9);
-      }
-
-      .bpd-hero-title-refined .bpd-hero-line-two{
-        font-size:var(--bpd-hero-unit)!important;
-        line-height:1.1!important;
-        margin:8px 0 6px!important;
-        padding:4px 12px 4px 10px!important;
-        font-weight:850!important;
-        font-style:italic!important;
-        letter-spacing:.15em!important;
-        text-transform:uppercase;
-        color:#ffd34e!important;
-        border-left:4px solid #ffd15c;box-shadow:0 5px 18px rgba(255,195,45,.16);
-        background:linear-gradient(90deg,rgba(255,209,92,.18),rgba(255,209,92,0));
-        border-radius:2px 10px 10px 2px;
-        text-shadow:0 2px 10px rgba(0,0,0,.38);
-      }
-      .bpd-hero-title-refined .bpd-hero-line-two strong,
-      .bpd-hero-title-refined .bpd-hero-line-two em{
-        font-size:inherit!important;
-        font-weight:850!important;
-        font-style:italic!important;
-        color:inherit!important;
-      }
-
-      .bpd-hero-title-refined .bpd-hero-line-three{
-        font-size:calc(var(--bpd-hero-unit) * 2)!important;
-        line-height:.98!important;
-        margin-top:1px!important;
-        font-weight:800!important;
-        font-style:normal!important;
-        letter-spacing:.012em!important;
-        color:#dfffee!important;
-background:linear-gradient(90deg,#ffffff 0%,#baffdf 55%,#55eeb6 100%);
--webkit-background-clip:text;
-background-clip:text;
--webkit-text-fill-color:transparent;
-filter:drop-shadow(0 3px 9px rgba(0,0,0,.35));
-        white-space:nowrap!important;
-        padding-bottom:7px!important;
-      }
-      .bpd-hero-title-refined .bpd-hero-line-three::after{
+      .hero h1.bpd-hero-title-refined::before{
         content:"";
         position:absolute;
-        left:0;
-        bottom:0;
-        width:42%;
-        height:3px;
+        left:0;top:4px;bottom:5px;
+        width:4px;border-radius:999px;
+        background:linear-gradient(to bottom,#e6bd57 0 34%,#fff 34% 58%,#73c69d 58% 100%);
+        box-shadow:0 0 16px rgba(230,189,87,.18)
+      }
+      .hero h1.bpd-hero-title-refined .bpd-hero-line{
+        display:block!important;
+        width:max-content!important;
+        max-width:100%!important;
+        background:none!important;
+        -webkit-text-fill-color:currentColor!important
+      }
+      .hero h1.bpd-hero-title-refined .bpd-hero-line-one{
+        color:#fff!important;
+        font-family:Merriweather,Georgia,'Times New Roman',serif!important;
+        font-size:clamp(48px,5.1vw,70px)!important;
+        line-height:.98!important;
+        font-weight:900!important;
+        font-style:normal!important;
+        letter-spacing:-.045em!important;
+        white-space:nowrap!important;
+        text-shadow:0 3px 18px rgba(0,0,0,.40)!important
+      }
+      .hero h1.bpd-hero-title-refined .bpd-hero-line-two{
+        position:relative!important;
+        margin:8px 0!important;
+        padding:0 54px 3px 2px!important;
+        color:#f1c965!important;
+        font-family:Merriweather,Georgia,'Times New Roman',serif!important;
+        font-size:clamp(29px,3vw,41px)!important;
+        line-height:1!important;
+        font-weight:900!important;
+        font-style:italic!important;
+        letter-spacing:.005em!important;
+        white-space:nowrap!important;
+        text-shadow:0 3px 16px rgba(0,0,0,.34)!important
+      }
+      .hero h1.bpd-hero-title-refined .bpd-hero-line-two::after{
+        content:"";
+        position:absolute;
+        left:calc(100% - 38px);
+        top:54%;
+        width:74px;height:2px;
         border-radius:999px;
-        background:linear-gradient(90deg,#ffffff,#67e8b7,rgba(103,232,183,0));
-        box-shadow:0 1px 8px rgba(0,0,0,.2);
+        background:linear-gradient(90deg,#f1c965,rgba(241,201,101,0))
+      }
+      .hero h1.bpd-hero-title-refined .bpd-hero-line-two strong,
+      .hero h1.bpd-hero-title-refined .bpd-hero-line-two em{
+        color:inherit!important;
+        font:inherit!important;
+        letter-spacing:inherit!important
+      }
+      .hero h1.bpd-hero-title-refined .bpd-hero-line-three{
+        color:#d8f5e6!important;
+        font-family:Inter,Arial,Helvetica,sans-serif!important;
+        font-size:clamp(36px,3.85vw,53px)!important;
+        line-height:1!important;
+        font-weight:850!important;
+        font-style:normal!important;
+        letter-spacing:-.035em!important;
+        white-space:nowrap!important;
+        text-shadow:0 3px 18px rgba(0,0,0,.36)!important
+      }
+      .hero h1.bpd-hero-title-refined .bpd-hero-line-three::after{
+        content:"";
+        display:block;
+        width:104px;height:4px;
+        margin-top:10px;
+        border-radius:999px;
+        background:#73c69d;
+        box-shadow:42px 0 0 -1px #e6bd57
+      }
+      .hero .hero-copy>p{
+        max-width:670px!important;
+        margin-top:13px!important;
+        line-height:1.45!important
       }
 
-      @media(max-width:680px){
-        .bpd-hero-section-refined{
-          min-height:245px!important;
-          padding-top:16px!important;
-          padding-bottom:16px!important;
-        }
-        .bpd-hero-content-refined{
-          padding-top:8px!important;
-          padding-bottom:8px!important;
-        }
-        .bpd-hero-title-refined{
-         --bpd-hero-unit:clamp(13px,3.8vw,16px);
-          margin-top:0!important;
-        }
-        .bpd-hero-title-refined .bpd-hero-line-two{
-          margin:6px 0 5px!important;
-          padding:3px 9px 3px 8px!important;
-          border-left-width:3px;
-        }
-        .bpd-hero-title-refined .bpd-hero-line-three{
-          padding-bottom:5px!important;
-        }
+      @media(max-width:760px){
+        .hero{padding-top:14px!important}
+        .hero .hero-shell{min-height:272px!important;border-radius:22px!important}
+        .hero .hero-copy{max-width:100%!important;padding:27px 22px 30px!important}
+        .hero h1.bpd-hero-title-refined{padding-left:16px!important;margin:5px 0 14px!important}
+        .hero h1.bpd-hero-title-refined::before{width:3px}
+        .hero h1.bpd-hero-title-refined .bpd-hero-line-one{font-size:clamp(32px,8.2vw,44px)!important}
+        .hero h1.bpd-hero-title-refined .bpd-hero-line-two{font-size:clamp(23px,5.8vw,31px)!important;padding-right:35px!important}
+        .hero h1.bpd-hero-title-refined .bpd-hero-line-two::after{left:calc(100% - 25px);width:48px}
+        .hero h1.bpd-hero-title-refined .bpd-hero-line-three{font-size:clamp(26px,6.4vw,35px)!important}
+        .hero h1.bpd-hero-title-refined .bpd-hero-line-three::after{width:72px;height:3px;margin-top:8px;box-shadow:30px 0 0 -1px #e6bd57}
       }
       @media(max-width:390px){
-        .bpd-hero-section-refined{min-height:225px!important;}
-        .bpd-hero-title-refined{--bpd-hero-unit:12px;
+        .hero .hero-shell{min-height:258px!important}
+        .hero .hero-copy{padding:23px 17px 26px!important}
+        .hero h1.bpd-hero-title-refined .bpd-hero-line-one{font-size:29px!important}
+        .hero h1.bpd-hero-title-refined .bpd-hero-line-two{font-size:22px!important}
+        .hero h1.bpd-hero-title-refined .bpd-hero-line-three{font-size:24px!important}
       }
     `;
     document.head.appendChild(style);
   }
 
-  refinePublicationHeading();
-
-  const heroTitle=findHomepageHeroTitle();
-  if(!heroTitle)return false;
-
-  heroTitle.classList.add('bpd-hero-title-refined');
-  heroTitle.innerHTML=`
-    <span class="bpd-hero-line bpd-hero-line-one">Bersama Masyarakat</span>
-    <span class="bpd-hero-line bpd-hero-line-two"><strong><em>Mengawal</em></strong></span>
-    <span class="bpd-hero-line bpd-hero-line-three">Pembangunan Desa</span>`;
-  heroTitle.dataset.bpdRefined='3';
-
-  const content=heroTitle.closest(
-    '.hero-content,.hero__content,[class*="hero-content"],[class*="hero__content"],'+
-    '.banner-content,.banner__content,[class*="banner-content"],[class*="banner__content"]'
-  )||heroTitle.parentElement;
-  content?.classList.add('bpd-hero-content-refined');
-
-  const section=findHomepageHeroContainer(heroTitle);
-  section?.classList.add('bpd-hero-section-refined');
-  return true;
-}
-
-function ensurePortalPresentationFixes(){
-  applyPortalPresentationFixes();
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',applyPortalPresentationFixes,{once:true});
+  const heroTitle=document.querySelector('.hero h1');
+  if(heroTitle){
+    heroTitle.classList.add('bpd-hero-title-refined');
+    heroTitle.innerHTML=`
+      <span class="bpd-hero-line bpd-hero-line-one">Bersama Masyarakat</span>
+      <span class="bpd-hero-line bpd-hero-line-two"><strong><em>Mengawal</em></strong></span>
+      <span class="bpd-hero-line bpd-hero-line-three">Pembangunan Desa</span>`;
+    heroTitle.dataset.bpdRefined='20260812';
   }
-  window.addEventListener('load',applyPortalPresentationFixes,{once:true});
-  [120,350,700,1200,2000].forEach(ms=>setTimeout(applyPortalPresentationFixes,ms));
 }
-
-ensurePortalPresentationFixes();
+applyPortalPresentationFixes();
 
 const INITIAL_SLUG=new URL(location.href).searchParams.get('berita');
 if(INITIAL_SLUG){
@@ -493,20 +372,25 @@ function images(item){
   const arr=Array.isArray(item?.images)
     ?item.images.filter(x=>x&&x.url)
     :[];
-  if(arr.length)return arr;
-  return item?.cover_url?[{url:item.cover_url}]:[];
+  const cover=String(item?.cover_url||'').trim();
+  if(!cover)return arr;
+  const selected=arr.find(x=>String(x?.url||'').trim()===cover);
+  const rest=arr.filter(x=>String(x?.url||'').trim()!==cover);
+  return [selected||{url:cover,original_name:'Sampul'},...rest];
 }
 
 function sideImage(item){
-  return item?.cover_url
-    ?`<img src="${esc(item.cover_url)}" alt="${esc(item.title||'Berita Desa Somagede')}">`
+  const cover=String(item?.cover_url||'').trim();
+  const src=cover||images(item)[0]?.url||'';
+  return src
+    ?`<img src="${esc(src)}" alt="${esc(item.title||'Berita Desa Somagede')}" loading="lazy" decoding="async">`
     :`<span style="width:100%;height:100%;display:grid;place-items:center;color:#fff;font-size:9px;font-weight:900">BPD</span>`;
 }
 
 async function getDetail(id){
   const key=String(id);
   if(detailCache.has(key))return detailCache.get(key);
-  const r=await fetch(`${API}/api/activities/${encodeURIComponent(key)}`,{cache:'default'});
+  const r=await fetch(`${API}/api/activities/${encodeURIComponent(key)}`,{cache:'no-store'});
   const d=await r.json();
   if(!r.ok||!d.ok||!d.item)throw new Error(d.error||'Gagal memuat berita');
   detailCache.set(key,d.item);
@@ -514,7 +398,7 @@ async function getDetail(id){
 }
 
 async function getDetailBySlug(slug){
-  const r=await fetch(`${API}/api/activities/slug/${encodeURIComponent(slug)}`,{cache:'default'});
+  const r=await fetch(`${API}/api/activities/slug/${encodeURIComponent(slug)}`,{cache:'no-store'});
   const d=await r.json();
   if(!r.ok||!d.ok||!d.item)throw new Error(d.error||'Berita tidak ditemukan');
   detailCache.set(String(d.item.id),d.item);
@@ -696,7 +580,7 @@ function renderComments(items){
 
 async function loadSocial(id){
   try{
-    const r=await fetch(`${API}/api/activities/${encodeURIComponent(id)}/social?client_id=${encodeURIComponent(clientId)}`,{cache:'default'});
+    const r=await fetch(`${API}/api/activities/${encodeURIComponent(id)}/social?client_id=${encodeURIComponent(clientId)}`,{cache:'no-store'});
     const d=await r.json();
     if(!r.ok||!d.ok)throw new Error(d.error||'Gagal memuat interaksi');
     const likeBtn=document.querySelector('[data-like]');
@@ -774,7 +658,7 @@ async function toggleYear(year){
   if(openYears.has(year)){openYears.delete(year);refreshSide();return;}
   if(!archiveCache.has(year)){
     try{
-      const r=await fetch(`${API}/api/archive/${encodeURIComponent(year)}`,{cache:'default'});
+      const r=await fetch(`${API}/api/archive/${encodeURIComponent(year)}`,{cache:'no-store'});
       const d=await r.json();
       if(!r.ok||!d.ok)throw new Error(d.error||'Gagal memuat arsip');
       const sortedItems=newestActivityFirst(d.items||[]);
@@ -856,8 +740,8 @@ async function load(){
   buildShell();
   try{
     const [latestRes,yearRes]=await Promise.all([
-      fetch(`${API}/api/activities?limit=100`,{cache:'default'}),
-      fetch(`${API}/api/archive`,{cache:'default'})
+      fetch(`${API}/api/activities?limit=100`,{cache:'no-store'}),
+      fetch(`${API}/api/archive`,{cache:'no-store'})
     ]);
     const latestData=await latestRes.json();
     const yearData=await yearRes.json();
@@ -876,7 +760,7 @@ async function load(){
 
     if(YEARS[0]?.year){
       openYears.add(String(YEARS[0].year));
-      fetch(`${API}/api/archive/${encodeURIComponent(YEARS[0].year)}`,{cache:'default'})
+      fetch(`${API}/api/archive/${encodeURIComponent(YEARS[0].year)}`,{cache:'no-store'})
         .then(r=>r.json())
         .then(d=>{
           if(d.ok){

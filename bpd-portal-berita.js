@@ -96,9 +96,13 @@ const mount=document.getElementById('bpdPortalBerita');
 if(!mount) return;
 
 /* =========================================================
-   PENYEMPURNAAN BERANDA 11 AGUSTUS 2026 — FIX HEADER V2
-   - Judul Berita Terbaru dan isi Arsip menggunakan bobot normal
-   - Header utama dideteksi dari struktur halaman, tidak bergantung .hero h2
+   PENYEMPURNAAN BERANDA — HEADER V3 / PUBLIKASI KEGIATAN
+   - Bersama Masyarakat = 3x ukuran Mengawal, tidak miring
+   - Mengawal = aksen kecil, tebal + miring
+   - Pembangunan Desa = 2x ukuran Mengawal, tidak miring
+   - Publikasi Desa -> Publikasi Kegiatan
+   - Berita Desa Somagede -> Badan Permusyawaratan Desa(BPD) Somagede
+   - Panel berita/arsip tetap normal (tidak bold) dan urut terbaru -> terlama
    ========================================================= */
 function normalizeHeroText(value){
   return String(value||'').replace(/\s+/g,' ').trim().toLowerCase();
@@ -173,12 +177,29 @@ function findHomepageHeroContainer(title){
   return title?.closest('main > section,main section,section')||title?.parentElement||null;
 }
 
-function applyPortalPresentationFixes(){
-  if(!document.getElementById('bpd-home-refine-20260811-v2')){
-    document.getElementById('bpd-home-refine-20260811')?.remove();
+function refinePublicationHeading(){
+  const section=document.querySelector('#berita-desa,section.portal-news,.portal-news');
+  if(!section)return false;
 
+  const kicker=section.querySelector('.portal-news-head .kicker,.kicker');
+  if(kicker && /publikasi\s+desa/i.test(kicker.textContent||'')){
+    kicker.textContent='Publikasi Kegiatan';
+  }
+
+  const heading=section.querySelector('.portal-news-head h2,h2');
+  if(heading && /berita\s+desa\s+somagede/i.test(heading.textContent||'')){
+    heading.textContent='Badan Permusyawaratan Desa(BPD) Somagede';
+  }
+  return true;
+}
+
+function applyPortalPresentationFixes(){
+  document.getElementById('bpd-home-refine-20260811')?.remove();
+  document.getElementById('bpd-home-refine-20260811-v2')?.remove();
+
+  if(!document.getElementById('bpd-home-refine-20260812-v3')){
     const style=document.createElement('style');
-    style.id='bpd-home-refine-20260811-v2';
+    style.id='bpd-home-refine-20260812-v3';
     style.textContent=`
       #bpdPortalBerita .portal-news-item strong,
       #bpdPortalBerita .portal-news-item small,
@@ -188,63 +209,122 @@ function applyPortalPresentationFixes(){
       }
 
       .bpd-hero-section-refined{
-        min-height:290px!important;
+        min-height:300px!important;
         height:auto!important;
         max-height:none!important;
-        padding-top:26px!important;
-        padding-bottom:26px!important;
+        padding-top:22px!important;
+        padding-bottom:22px!important;
         box-sizing:border-box!important;
       }
       .bpd-hero-content-refined{
-        padding-top:16px!important;
-        padding-bottom:16px!important;
+        padding-top:12px!important;
+        padding-bottom:12px!important;
       }
       .bpd-hero-title-refined{
-        margin:4px 0 6px!important;
-        font-size:clamp(26px,3.25vw,39px)!important;
-        line-height:1.02!important;
-        letter-spacing:-.015em!important;
+        --bpd-hero-unit:clamp(17px,1.45vw,20px);
+        margin:2px 0 8px!important;
+        line-height:1!important;
+        letter-spacing:normal!important;
+        font-size:var(--bpd-hero-unit)!important;
+        text-wrap:balance;
       }
       .bpd-hero-title-refined .bpd-hero-line{
         display:block!important;
+        width:max-content;
+        max-width:100%;
+        position:relative;
+        text-shadow:0 3px 12px rgba(0,0,0,.34);
       }
-      .bpd-hero-title-refined .bpd-hero-line-one,
-      .bpd-hero-title-refined .bpd-hero-line-three{
+
+      .bpd-hero-title-refined .bpd-hero-line-one{
+        font-size:calc(var(--bpd-hero-unit) * 3)!important;
+        line-height:.94!important;
+        font-weight:950!important;
+        font-style:normal!important;
+        letter-spacing:-.035em!important;
+        color:#ffffff!important;
         white-space:nowrap!important;
+        text-shadow:0 3px 14px rgba(0,0,0,.42),0 0 1px rgba(255,255,255,.9);
       }
+
       .bpd-hero-title-refined .bpd-hero-line-two{
-        margin:3px 0!important;
-        font-weight:800!important;
+        font-size:var(--bpd-hero-unit)!important;
+        line-height:1.1!important;
+        margin:8px 0 6px!important;
+        padding:4px 12px 4px 10px!important;
+        font-weight:850!important;
         font-style:italic!important;
+        letter-spacing:.15em!important;
+        text-transform:uppercase;
+        color:#ffe08a!important;
+        border-left:4px solid #ffd15c;
+        background:linear-gradient(90deg,rgba(255,209,92,.18),rgba(255,209,92,0));
+        border-radius:2px 10px 10px 2px;
+        text-shadow:0 2px 10px rgba(0,0,0,.38);
       }
       .bpd-hero-title-refined .bpd-hero-line-two strong,
       .bpd-hero-title-refined .bpd-hero-line-two em{
-        font-weight:800!important;
+        font-size:inherit!important;
+        font-weight:850!important;
         font-style:italic!important;
+        color:inherit!important;
+      }
+
+      .bpd-hero-title-refined .bpd-hero-line-three{
+        font-size:calc(var(--bpd-hero-unit) * 2)!important;
+        line-height:.98!important;
+        margin-top:1px!important;
+        font-weight:800!important;
+        font-style:normal!important;
+        letter-spacing:.012em!important;
+        color:#eafff7!important;
+        white-space:nowrap!important;
+        padding-bottom:7px!important;
+      }
+      .bpd-hero-title-refined .bpd-hero-line-three::after{
+        content:"";
+        position:absolute;
+        left:0;
+        bottom:0;
+        width:42%;
+        height:3px;
+        border-radius:999px;
+        background:linear-gradient(90deg,#ffffff,#67e8b7,rgba(103,232,183,0));
+        box-shadow:0 1px 8px rgba(0,0,0,.2);
       }
 
       @media(max-width:680px){
         .bpd-hero-section-refined{
           min-height:245px!important;
-          padding-top:18px!important;
-          padding-bottom:18px!important;
+          padding-top:16px!important;
+          padding-bottom:16px!important;
         }
         .bpd-hero-content-refined{
-          padding-top:10px!important;
-          padding-bottom:10px!important;
+          padding-top:8px!important;
+          padding-bottom:8px!important;
         }
         .bpd-hero-title-refined{
-          font-size:clamp(22px,7vw,30px)!important;
-          line-height:1.02!important;
+          --bpd-hero-unit:clamp(11px,3.2vw,13px);
+          margin-top:0!important;
+        }
+        .bpd-hero-title-refined .bpd-hero-line-two{
+          margin:6px 0 5px!important;
+          padding:3px 9px 3px 8px!important;
+          border-left-width:3px;
+        }
+        .bpd-hero-title-refined .bpd-hero-line-three{
+          padding-bottom:5px!important;
         }
       }
       @media(max-width:390px){
         .bpd-hero-section-refined{min-height:225px!important;}
-        .bpd-hero-title-refined{font-size:21px!important;}
+        .bpd-hero-title-refined{--bpd-hero-unit:10.5px;}
       }
     `;
     document.head.appendChild(style);
   }
+
+  refinePublicationHeading();
 
   const heroTitle=findHomepageHeroTitle();
   if(!heroTitle)return false;
@@ -254,7 +334,7 @@ function applyPortalPresentationFixes(){
     <span class="bpd-hero-line bpd-hero-line-one">Bersama Masyarakat</span>
     <span class="bpd-hero-line bpd-hero-line-two"><strong><em>Mengawal</em></strong></span>
     <span class="bpd-hero-line bpd-hero-line-three">Pembangunan Desa</span>`;
-  heroTitle.dataset.bpdRefined='2';
+  heroTitle.dataset.bpdRefined='3';
 
   const content=heroTitle.closest(
     '.hero-content,.hero__content,[class*="hero-content"],[class*="hero__content"],'+
@@ -273,7 +353,7 @@ function ensurePortalPresentationFixes(){
     document.addEventListener('DOMContentLoaded',applyPortalPresentationFixes,{once:true});
   }
   window.addEventListener('load',applyPortalPresentationFixes,{once:true});
-  [180,500,1000,1800].forEach(ms=>setTimeout(applyPortalPresentationFixes,ms));
+  [120,350,700,1200,2000].forEach(ms=>setTimeout(applyPortalPresentationFixes,ms));
 }
 
 ensurePortalPresentationFixes();

@@ -100,6 +100,22 @@ if(!mount) return;
    - Judul Berita Terbaru dan isi Arsip menggunakan bobot normal
    - Header utama lebih ringkas dan proporsional
    ========================================================= */
+
+function findHomepageHeroTitle(){
+  const scoped=[
+    ...document.querySelectorAll('.hero h1,.hero h2,.hero h3,.banner h1,.banner h2,.banner h3,.masthead h1,.masthead h2,.masthead h3')
+  ];
+  return scoped.find(el=>/Bersama\s+Masyarakat|Pembangunan\s+Desa/i.test(el.textContent||''))
+    || [...document.querySelectorAll('h1,h2,h3')].find(el=>/Bersama\s+Masyarakat|Pembangunan\s+Desa/i.test(el.textContent||''))
+    || document.querySelector('.hero h1,.hero h2,.hero h3');
+}
+
+function findHomepageHeroContainer(title){
+  return title?.closest('.hero,.hero-section,.hero-banner,.banner,.masthead,[class*="hero"],[class*="banner"]')
+    || title?.parentElement
+    || null;
+}
+
 function applyPortalPresentationFixes(){
   if(!document.getElementById('bpd-home-refine-20260812-v4')){
     const style=document.createElement('style');

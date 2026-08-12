@@ -40,7 +40,8 @@ jobs:
           kd = Path('kepala-desa.html')
           k = kd.read_text(encoding='utf-8')
           old = '.leader-photo img{width:100%;height:100%;object-fit:cover;object-position:center top}'
-          rule = '.leader-photo img{width:100%;height:100%;object-fit:cover;object-position:center center}.leader-grid .leader-card:nth-child(-n+5) .leader-photo img{object-position:50% 50%!important;object-fit:cover!important}'
+          rule = '.leader-photo img{width:100%;height:100%;object-fit:cover;object-position:center top}.
+          leader-grid .leader-card:nth-child(-n+5) .leader-photo img{object-position:50% 50%!important;object-fit:cover!important}'
           if old in k:
               k = k.replace(old, rule, 1)
           elif 'nth-child(-n+5)' not in k:

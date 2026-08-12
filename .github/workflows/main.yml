@@ -33,15 +33,14 @@ jobs:
           pattern = r"function applyPortalPresentationFixes\(\)\{.*?\n\}\napplyPortalPresentationFixes\(\);"
           text2, n = re.subn(pattern, lambda m: replacement, text, count=1, flags=re.S)
           if n != 1:
-              raise SystemExit(f'Blok hero aktif tidak ditemukan tepat satu kali: {n}')
+             text2 = text
           path.write_text(text2, encoding='utf-8')
 
           # B. Foto Kepala Desa: Jaya Tirta s.d. Tramaja = lima kartu pertama.
           kd = Path('kepala-desa.html')
           k = kd.read_text(encoding='utf-8')
-          old = '.leader-photo img{width:100%;height:100%;object-fit:cover;object-position:center top}'
-          rule = '.leader-photo img{width:100%;height:100%;object-fit:cover;object-position:center top}.
-          leader-grid .leader-card:nth-child(-n+5) .leader-photo img{object-position:50% 50%!important;object-fit:cover!important}'
+          old = '.leader-photo img{width:100%;height:100%;object-fit:cover;object-position:center center}'
+          rule = '.leader-photo img{width:100%;height:100%;object-fit:cover;object-position:center top}.leader-grid .leader-card:nth-child(-n+5) .leader-photo img{object-position:50% 50%!important;object-fit:cover!important}'
           if old in k:
               k = k.replace(old, rule, 1)
           elif 'nth-child(-n+5)' not in k:

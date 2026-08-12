@@ -1,4 +1,4 @@
-name: Aktifkan Video Audio BPD Somagede
+name: Perbaiki Visual BPD Somagede V4
 
 on:
   workflow_dispatch:
@@ -11,74 +11,82 @@ permissions:
   contents: write
 
 jobs:
-  aktifkan-media:
+  perbaiki-visual:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Ambil isi repository
+      - name: Ambil repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Pasang addon video dan audio tanpa mengubah desain
+      - name: Terapkan revisi final tanpa efek berat
+        shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
-          patches = {
+          # A. Hero beranda: transparan, tanpa bingkai, warna per huruf, responsif.
+          path = Path('bpd-portal-berita.js')
+          text = path.read_text(encoding='utf-8')
+          replacement = 'function applyPortalPresentationFixes(){\n  if(!document.getElementById(\'bpd-home-refine-20260812-v4\')){\n    const style=document.createElement(\'style\');\n    style.id=\'bpd-home-refine-20260812-v4\';\n    style.textContent=`\n      #bpdPortalBerita .portal-news-item strong,\n      #bpdPortalBerita .portal-news-item small,\n      #bpdPortalBerita .archive-item-title,\n      #bpdPortalBerita .archive-item-date{font-weight:400!important}\n\n      .bpd-hero-section-refined{min-height:290px!important;height:auto!important;max-height:none!important;padding-top:20px!important;padding-bottom:20px!important;box-sizing:border-box!important}\n      .bpd-hero-content-refined{position:relative!important;z-index:2!important;max-width:920px!important;padding-top:18px!important;padding-bottom:18px!important}\n\n      .bpd-hero-title-refined{\n        position:relative!important;width:100%!important;max-width:880px!important;\n        margin:7px 0 17px!important;padding:0!important;border:0!important;\n        outline:0!important;background:transparent!important;box-shadow:none!important;\n        line-height:1!important;overflow:visible!important\n      }\n      .bpd-hero-title-refined::before,\n      .bpd-hero-title-refined::after,\n      .bpd-hero-title-refined .bpd-hero-line::before,\n      .bpd-hero-title-refined .bpd-hero-line::after,\n      .bpd-hero-title-refined .bpd-word::before,\n      .bpd-hero-title-refined .bpd-word::after{\n        content:none!important;display:none!important;border:0!important;\n        background:none!important;box-shadow:none!important\n      }\n      .bpd-hero-title-refined .bpd-hero-line{\n        display:block!important;width:100%!important;max-width:100%!important;\n        margin:0!important;padding:0!important;border:0!important;outline:0!important;\n        background:transparent!important;box-shadow:none!important;white-space:normal!important;\n        overflow:visible!important;word-break:normal!important\n      }\n      .bpd-hero-title-refined .bpd-word{\n        display:inline-block!important;white-space:nowrap!important;margin:0!important;\n        padding:0!important;border:0!important;outline:0!important;background:transparent!important;\n        box-shadow:none!important\n      }\n      .bpd-hero-title-refined .bpd-letter{\n        display:inline!important;margin:0!important;padding:0!important;border:0!important;\n        background:transparent!important;box-shadow:none!important;\n        text-shadow:0 3px 15px rgba(0,0,0,.52)!important\n      }\n      .bpd-hero-title-refined .c0{color:#ffffff!important}\n      .bpd-hero-title-refined .c1{color:#9ff2d1!important}\n      .bpd-hero-title-refined .c2{color:#8ed8ff!important}\n      .bpd-hero-title-refined .c3{color:#ffe082!important}\n      .bpd-hero-title-refined .c4{color:#ffc0d9!important}\n      .bpd-hero-title-refined .c5{color:#d5c5ff!important}\n      .bpd-hero-title-refined .c6{color:#ffbd86!important}\n      .bpd-hero-title-refined .c7{color:#a8f08f!important}\n\n      .bpd-hero-title-refined .bpd-hero-line-one{\n        font-family:Merriweather,Georgia,\'Times New Roman\',serif!important;\n        font-size:clamp(44px,5vw,68px)!important;line-height:.98!important;\n        font-weight:900!important;font-style:normal!important;letter-spacing:-.04em!important\n      }\n      .bpd-hero-title-refined .bpd-hero-line-two{\n        margin:8px 0 7px!important;font-family:Merriweather,Georgia,\'Times New Roman\',serif!important;\n        font-size:clamp(25px,2.8vw,38px)!important;line-height:1.05!important;\n        font-weight:900!important;font-style:italic!important;letter-spacing:.01em!important\n      }\n      .bpd-hero-title-refined .bpd-hero-line-three{\n        font-family:Inter,Arial,Helvetica,sans-serif!important;\n        font-size:clamp(34px,3.7vw,50px)!important;line-height:1.03!important;\n        font-weight:850!important;font-style:normal!important;letter-spacing:-.03em!important\n      }\n      .bpd-hero-content-refined>p{max-width:680px!important;margin-top:12px!important;line-height:1.48!important}\n\n      @media(max-width:760px){\n        .bpd-hero-section-refined{min-height:245px!important;padding-top:14px!important;padding-bottom:14px!important}\n        .bpd-hero-content-refined{max-width:100%!important;padding-top:12px!important;padding-bottom:12px!important}\n        .bpd-hero-title-refined{margin:4px 0 13px!important;max-width:100%!important}\n        .bpd-hero-title-refined .bpd-hero-line-one{font-size:clamp(28px,8vw,42px)!important;line-height:1.02!important}\n        .bpd-hero-title-refined .bpd-hero-line-two{font-size:clamp(20px,5.7vw,29px)!important;margin:6px 0!important}\n        .bpd-hero-title-refined .bpd-hero-line-three{font-size:clamp(24px,6.5vw,34px)!important;line-height:1.05!important}\n      }\n      @media(max-width:390px){\n        .bpd-hero-section-refined{min-height:225px!important}.bpd-hero-content-refined{padding-top:10px!important;padding-bottom:10px!important}\n        .bpd-hero-title-refined .bpd-hero-line-one{font-size:26px!important;letter-spacing:-.035em!important}\n        .bpd-hero-title-refined .bpd-hero-line-two{font-size:20px!important}\n        .bpd-hero-title-refined .bpd-hero-line-three{font-size:23px!important}\n      }\n      @media(forced-colors:active){\n        .bpd-hero-title-refined .bpd-letter{\n          color:CanvasText!important;text-shadow:none!important\n        }\n      }\n    `;\n    document.head.appendChild(style);\n  }\n\n  const heroTitle=findHomepageHeroTitle();\n  if(heroTitle){\n    const paintWord=(word,start=0)=>`<span class="bpd-word">${[...word].map((ch,i)=>`<span class="bpd-letter c${(start+i)%8}">${ch}</span>`).join(\'\')}</span>`;\n    heroTitle.classList.add(\'bpd-hero-title-refined\');\n    heroTitle.innerHTML=`\n      <span class="bpd-hero-line bpd-hero-line-one">${paintWord(\'Bersama\',0)} ${paintWord(\'Masyarakat\',2)}</span>\n      <span class="bpd-hero-line bpd-hero-line-two">${paintWord(\'Mengawal\',3)}</span>\n      <span class="bpd-hero-line bpd-hero-line-three">${paintWord(\'Pembangunan\',1)} ${paintWord(\'Desa\',5)}</span>`;\n    heroTitle.dataset.bpdRefined=\'20260812-v4\';\n    const content=heroTitle.closest(\'.hero-content,.hero__content,[class*="hero-content"],[class*="hero__content"],.banner-content,.banner__content,[class*="banner-content"],[class*="banner__content"]\')||heroTitle.parentElement;\n    content?.classList.add(\'bpd-hero-content-refined\');\n    const heroSection=findHomepageHeroContainer(heroTitle);\n    heroSection?.classList.add(\'bpd-hero-section-refined\');\n  }\n\n  const section=document.querySelector(\'#berita-desa,section.portal-news,.portal-news\');\n  if(section){\n    const kicker=section.querySelector(\'.portal-news-head .kicker,.kicker\');\n    if(kicker && /publikasi\\s+desa/i.test(kicker.textContent||\'\')) kicker.textContent=\'Publikasi Kegiatan\';\n    const heading=section.querySelector(\'.portal-news-head h2,h2\');\n    if(heading && /berita\\s+desa\\s+somagede/i.test(heading.textContent||\'\')) heading.textContent=\'Badan Permusyawaratan Desa(BPD) Somagede\';\n  }\n  return true;\n}\n\nfunction ensurePortalPresentationFixes(){\n  applyPortalPresentationFixes();\n  if(document.readyState===\'loading\'){\n    document.addEventListener(\'DOMContentLoaded\',applyPortalPresentationFixes,{once:true});\n  }\n  window.addEventListener(\'load\',applyPortalPresentationFixes,{once:true});\n  [180,500,1000,1800].forEach(ms=>setTimeout(applyPortalPresentationFixes,ms));\n}\n\nensurePortalPresentationFixes();'
+          pattern = r"function applyPortalPresentationFixes\(\)\{.*?ensurePortalPresentationFixes\(\);"
+          text2, n = re.subn(pattern, lambda m: replacement, text, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit(f'Blok hero aktif tidak ditemukan tepat satu kali: {n}')
+          path.write_text(text2, encoding='utf-8')
+
+          # B. Foto Kepala Desa: Jaya Tirta s.d. Tramaja = lima kartu pertama.
+          kd = Path('kepala-desa.html')
+          k = kd.read_text(encoding='utf-8')
+          old = '.leader-photo img{width:100%;height:100%;object-fit:cover;object-position:center top}'
+          rule = '.leader-photo img{width:100%;height:100%;object-fit:cover;object-position:center center}.leader-grid .leader-card:nth-child(-n+5) .leader-photo img{object-position:50% 50%!important;object-fit:cover!important}'
+          if old in k:
+              k = k.replace(old, rule, 1)
+          elif 'nth-child(-n+5)' not in k:
+              marker = '</style>'
+              if marker not in k:
+                  raise SystemExit('Tag style kepala-desa tidak ditemukan')
+              k = k.replace(marker, '<style>.leader-grid .leader-card:nth-child(-n+5) .leader-photo img{object-position:50% 50%!important;object-fit:cover!important}</style>'+marker, 1)
+          kd.write_text(k, encoding='utf-8')
+
+          # C. Paksa browser mengambil JS baru, bukan cache lama.
+          idx = Path('index.html')
+          s = idx.read_text(encoding='utf-8')
+          s2, count = re.subn(r'bpd-portal-berita\.js(?:\?v=[^"\']*)?', 'bpd-portal-berita.js?v=20260812v4', s)
+          if count == 0:
+              raise SystemExit('Referensi bpd-portal-berita.js tidak ditemukan di index.html')
+          idx.write_text(s2, encoding='utf-8')
+
+          # D. Pertahankan addon video/audio yang sudah dipakai.
+          media_patches = {
               Path('editor.html'): '<script src="bpd-editor-media-addon.js?v=20260811"></script>',
               Path('index.html'): '<script src="bpd-portal-media-addon.js?v=20260811"></script>',
           }
+          for p, tag in media_patches.items():
+              t = p.read_text(encoding='utf-8')
+              if tag not in t:
+                  if '</body>' not in t:
+                      raise SystemExit(f'Tag body tidak ditemukan: {p}')
+                  t = t.replace('</body>', tag+'\n</body>', 1)
+                  p.write_text(t, encoding='utf-8')
 
-          changed = []
-
-          for path, tag in patches.items():
-              if not path.exists():
-                  raise SystemExit(f'File wajib tidak ditemukan: {path}')
-
-              text = path.read_text(encoding='utf-8')
-              if tag in text:
-                  print(f'{path}: addon sudah terpasang')
-                  continue
-
-              marker = '</body>'
-              if marker not in text:
-                  raise SystemExit(f'Tag </body> tidak ditemukan di {path}')
-
-              text = text.replace(marker, tag + '\n' + marker, 1)
-              path.write_text(text, encoding='utf-8')
-              changed.append(str(path))
-              print(f'{path}: addon dipasang')
-
-          # Pengamanan alamat final: jangan biarkan URL lama kembali.
-          for path in Path('.').rglob('*'):
-              if not path.is_file() or '.git' in path.parts or '.github' in path.parts:
-                  continue
-              if path.suffix.lower() not in {'.html','.htm','.js','.css','.xml','.json','.txt','.webmanifest','.md'}:
-                  continue
-              try:
-                  text = path.read_text(encoding='utf-8')
-              except Exception:
-                  continue
-              new = text.replace('https://bpdsomagede.github.io/DesaSomagede/','https://bpdsomagede.github.io/')
-              new = new.replace('https://bpdsomagede.github.io/DesaSomagede','https://bpdsomagede.github.io')
-              new = new.replace('/DesaSomagede/','/').replace('/DesaSomagede','')
-              if new != text:
-                  path.write_text(new, encoding='utf-8')
-                  if str(path) not in changed:
-                      changed.append(str(path))
-
-          print('File diperbarui:', ', '.join(changed) if changed else 'tidak ada')
+          # Penanda versi untuk pemeriksaan setelah deployment.
+          Path('VISUAL_VERSION.txt').write_text('BPD Somagede Visual V4 - 2026-08-12\nHero tanpa bingkai, warna per huruf, foto kepala desa 1-5 center.\n', encoding='utf-8')
           PY
 
-      - name: Simpan perubahan
+      - name: Validasi JavaScript
+        run: node --check bpd-portal-berita.js
+
+      - name: Simpan perubahan ke main
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add editor.html index.html
-
+          git add bpd-portal-berita.js kepala-desa.html index.html editor.html VISUAL_VERSION.txt
           if git diff --cached --quiet; then
-            echo "Addon sudah aktif. Tidak ada perubahan tambahan."
+            echo "Revisi V4 sudah aktif."
             exit 0
           fi
-
-          git commit -m "Aktifkan dukungan video dan audio berita"
+          git commit -m "Aktifkan visual V4 hero dan foto kepala desa"
           git push

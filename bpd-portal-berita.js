@@ -101,151 +101,133 @@ if(!mount) return;
    - Header utama lebih ringkas dan proporsional
    ========================================================= */
 function applyPortalPresentationFixes(){
-  if(!document.getElementById('bpd-home-refine-20260812')){
+  if(!document.getElementById('bpd-home-refine-20260812-v4')){
     const style=document.createElement('style');
-    style.id='bpd-home-refine-20260812';
+    style.id='bpd-home-refine-20260812-v4';
     style.textContent=`
       #bpdPortalBerita .portal-news-item strong,
       #bpdPortalBerita .portal-news-item small,
       #bpdPortalBerita .archive-item-title,
       #bpdPortalBerita .archive-item-date{font-weight:400!important}
 
-      .hero{padding-top:20px!important}
-      .hero .hero-shell{
-        min-height:310px!important;
-        border-radius:28px!important
-      }
-      .hero .hero-copy{
-        position:relative!important;
-        z-index:2!important;
-        max-width:860px!important;
-        padding:38px 44px 40px!important
-      }
+      .bpd-hero-section-refined{min-height:290px!important;height:auto!important;max-height:none!important;padding-top:20px!important;padding-bottom:20px!important;box-sizing:border-box!important}
+      .bpd-hero-content-refined{position:relative!important;z-index:2!important;max-width:920px!important;padding-top:18px!important;padding-bottom:18px!important}
 
-      .hero h1.bpd-hero-title-refined{
-        position:relative!important;
-        width:max-content!important;
-        max-width:100%!important;
-        margin:8px 0 18px!important;
-        padding:3px 0 5px 24px!important;
+      .bpd-hero-title-refined{
+        position:relative!important;width:100%!important;max-width:880px!important;
+        margin:7px 0 17px!important;padding:0!important;border:0!important;
+        outline:0!important;background:transparent!important;box-shadow:none!important;
+        line-height:1!important;overflow:visible!important
+      }
+      .bpd-hero-title-refined::before,
+      .bpd-hero-title-refined::after,
+      .bpd-hero-title-refined .bpd-hero-line::before,
+      .bpd-hero-title-refined .bpd-hero-line::after,
+      .bpd-hero-title-refined .bpd-word::before,
+      .bpd-hero-title-refined .bpd-word::after{
+        content:none!important;display:none!important;border:0!important;
+        background:none!important;box-shadow:none!important
+      }
+      .bpd-hero-title-refined .bpd-hero-line{
+        display:block!important;width:100%!important;max-width:100%!important;
+        margin:0!important;padding:0!important;border:0!important;outline:0!important;
+        background:transparent!important;box-shadow:none!important;white-space:normal!important;
+        overflow:visible!important;word-break:normal!important
+      }
+      .bpd-hero-title-refined .bpd-word{
+        display:inline-block!important;white-space:nowrap!important;margin:0!important;
+        padding:0!important;border:0!important;outline:0!important;background:transparent!important;
+        box-shadow:none!important
+      }
+      .bpd-hero-title-refined .bpd-letter{
+        display:inline!important;margin:0!important;padding:0!important;border:0!important;
+        background:transparent!important;box-shadow:none!important;
+        text-shadow:0 3px 15px rgba(0,0,0,.52)!important
+      }
+      .bpd-hero-title-refined .c0{color:#ffffff!important}
+      .bpd-hero-title-refined .c1{color:#9ff2d1!important}
+      .bpd-hero-title-refined .c2{color:#8ed8ff!important}
+      .bpd-hero-title-refined .c3{color:#ffe082!important}
+      .bpd-hero-title-refined .c4{color:#ffc0d9!important}
+      .bpd-hero-title-refined .c5{color:#d5c5ff!important}
+      .bpd-hero-title-refined .c6{color:#ffbd86!important}
+      .bpd-hero-title-refined .c7{color:#a8f08f!important}
+
+      .bpd-hero-title-refined .bpd-hero-line-one{
         font-family:Merriweather,Georgia,'Times New Roman',serif!important;
-        line-height:1!important
+        font-size:clamp(44px,5vw,68px)!important;line-height:.98!important;
+        font-weight:900!important;font-style:normal!important;letter-spacing:-.04em!important
       }
-      .hero h1.bpd-hero-title-refined::before{
-        content:"";
-        position:absolute;
-        left:0;top:4px;bottom:5px;
-        width:4px;border-radius:999px;
-        background:linear-gradient(to bottom,#e6bd57 0 34%,#fff 34% 58%,#73c69d 58% 100%);
-        box-shadow:0 0 16px rgba(230,189,87,.18)
+      .bpd-hero-title-refined .bpd-hero-line-two{
+        margin:8px 0 7px!important;font-family:Merriweather,Georgia,'Times New Roman',serif!important;
+        font-size:clamp(25px,2.8vw,38px)!important;line-height:1.05!important;
+        font-weight:900!important;font-style:italic!important;letter-spacing:.01em!important
       }
-      .hero h1.bpd-hero-title-refined .bpd-hero-line{
-        display:block!important;
-        width:max-content!important;
-        max-width:100%!important;
-        background:none!important;
-        -webkit-text-fill-color:currentColor!important
-      }
-      .hero h1.bpd-hero-title-refined .bpd-hero-line-one{
-        color:#fff!important;
-        font-family:Merriweather,Georgia,'Times New Roman',serif!important;
-        font-size:clamp(48px,5.1vw,70px)!important;
-        line-height:.98!important;
-        font-weight:900!important;
-        font-style:normal!important;
-        letter-spacing:-.045em!important;
-        white-space:nowrap!important;
-        text-shadow:0 3px 18px rgba(0,0,0,.40)!important
-      }
-      .hero h1.bpd-hero-title-refined .bpd-hero-line-two{
-        position:relative!important;
-        margin:8px 0!important;
-        padding:0 54px 3px 2px!important;
-        color:#f1c965!important;
-        font-family:Merriweather,Georgia,'Times New Roman',serif!important;
-        font-size:clamp(29px,3vw,41px)!important;
-        line-height:1!important;
-        font-weight:900!important;
-        font-style:italic!important;
-        letter-spacing:.005em!important;
-        white-space:nowrap!important;
-        text-shadow:0 3px 16px rgba(0,0,0,.34)!important
-      }
-      .hero h1.bpd-hero-title-refined .bpd-hero-line-two::after{
-        content:"";
-        position:absolute;
-        left:calc(100% - 38px);
-        top:54%;
-        width:74px;height:2px;
-        border-radius:999px;
-        background:linear-gradient(90deg,#f1c965,rgba(241,201,101,0))
-      }
-      .hero h1.bpd-hero-title-refined .bpd-hero-line-two strong,
-      .hero h1.bpd-hero-title-refined .bpd-hero-line-two em{
-        color:inherit!important;
-        font:inherit!important;
-        letter-spacing:inherit!important
-      }
-      .hero h1.bpd-hero-title-refined .bpd-hero-line-three{
-        color:#d8f5e6!important;
+      .bpd-hero-title-refined .bpd-hero-line-three{
         font-family:Inter,Arial,Helvetica,sans-serif!important;
-        font-size:clamp(36px,3.85vw,53px)!important;
-        line-height:1!important;
-        font-weight:850!important;
-        font-style:normal!important;
-        letter-spacing:-.035em!important;
-        white-space:nowrap!important;
-        text-shadow:0 3px 18px rgba(0,0,0,.36)!important
+        font-size:clamp(34px,3.7vw,50px)!important;line-height:1.03!important;
+        font-weight:850!important;font-style:normal!important;letter-spacing:-.03em!important
       }
-      .hero h1.bpd-hero-title-refined .bpd-hero-line-three::after{
-        content:"";
-        display:block;
-        width:104px;height:4px;
-        margin-top:10px;
-        border-radius:999px;
-        background:#73c69d;
-        box-shadow:42px 0 0 -1px #e6bd57
-      }
-      .hero .hero-copy>p{
-        max-width:670px!important;
-        margin-top:13px!important;
-        line-height:1.45!important
-      }
+      .bpd-hero-content-refined>p{max-width:680px!important;margin-top:12px!important;line-height:1.48!important}
 
       @media(max-width:760px){
-        .hero{padding-top:14px!important}
-        .hero .hero-shell{min-height:272px!important;border-radius:22px!important}
-        .hero .hero-copy{max-width:100%!important;padding:27px 22px 30px!important}
-        .hero h1.bpd-hero-title-refined{padding-left:16px!important;margin:5px 0 14px!important}
-        .hero h1.bpd-hero-title-refined::before{width:3px}
-        .hero h1.bpd-hero-title-refined .bpd-hero-line-one{font-size:clamp(32px,8.2vw,44px)!important}
-        .hero h1.bpd-hero-title-refined .bpd-hero-line-two{font-size:clamp(23px,5.8vw,31px)!important;padding-right:35px!important}
-        .hero h1.bpd-hero-title-refined .bpd-hero-line-two::after{left:calc(100% - 25px);width:48px}
-        .hero h1.bpd-hero-title-refined .bpd-hero-line-three{font-size:clamp(26px,6.4vw,35px)!important}
-        .hero h1.bpd-hero-title-refined .bpd-hero-line-three::after{width:72px;height:3px;margin-top:8px;box-shadow:30px 0 0 -1px #e6bd57}
+        .bpd-hero-section-refined{min-height:245px!important;padding-top:14px!important;padding-bottom:14px!important}
+        .bpd-hero-content-refined{max-width:100%!important;padding-top:12px!important;padding-bottom:12px!important}
+        .bpd-hero-title-refined{margin:4px 0 13px!important;max-width:100%!important}
+        .bpd-hero-title-refined .bpd-hero-line-one{font-size:clamp(28px,8vw,42px)!important;line-height:1.02!important}
+        .bpd-hero-title-refined .bpd-hero-line-two{font-size:clamp(20px,5.7vw,29px)!important;margin:6px 0!important}
+        .bpd-hero-title-refined .bpd-hero-line-three{font-size:clamp(24px,6.5vw,34px)!important;line-height:1.05!important}
       }
       @media(max-width:390px){
-        .hero .hero-shell{min-height:258px!important}
-        .hero .hero-copy{padding:23px 17px 26px!important}
-        .hero h1.bpd-hero-title-refined .bpd-hero-line-one{font-size:29px!important}
-        .hero h1.bpd-hero-title-refined .bpd-hero-line-two{font-size:22px!important}
-        .hero h1.bpd-hero-title-refined .bpd-hero-line-three{font-size:24px!important}
+        .bpd-hero-section-refined{min-height:225px!important}.bpd-hero-content-refined{padding-top:10px!important;padding-bottom:10px!important}
+        .bpd-hero-title-refined .bpd-hero-line-one{font-size:26px!important;letter-spacing:-.035em!important}
+        .bpd-hero-title-refined .bpd-hero-line-two{font-size:20px!important}
+        .bpd-hero-title-refined .bpd-hero-line-three{font-size:23px!important}
+      }
+      @media(forced-colors:active){
+        .bpd-hero-title-refined .bpd-letter{
+          color:CanvasText!important;text-shadow:none!important
+        }
       }
     `;
     document.head.appendChild(style);
   }
 
-  const heroTitle=document.querySelector('.hero h1');
+  const heroTitle=findHomepageHeroTitle();
   if(heroTitle){
+    const paintWord=(word,start=0)=>`<span class="bpd-word">${[...word].map((ch,i)=>`<span class="bpd-letter c${(start+i)%8}">${ch}</span>`).join('')}</span>`;
     heroTitle.classList.add('bpd-hero-title-refined');
     heroTitle.innerHTML=`
-      <span class="bpd-hero-line bpd-hero-line-one">Bersama Masyarakat</span>
-      <span class="bpd-hero-line bpd-hero-line-two"><strong><em>Mengawal</em></strong></span>
-      <span class="bpd-hero-line bpd-hero-line-three">Pembangunan Desa</span>`;
-    heroTitle.dataset.bpdRefined='20260812';
+      <span class="bpd-hero-line bpd-hero-line-one">${paintWord('Bersama',0)} ${paintWord('Masyarakat',2)}</span>
+      <span class="bpd-hero-line bpd-hero-line-two">${paintWord('Mengawal',3)}</span>
+      <span class="bpd-hero-line bpd-hero-line-three">${paintWord('Pembangunan',1)} ${paintWord('Desa',5)}</span>`;
+    heroTitle.dataset.bpdRefined='20260812-v4';
+    const content=heroTitle.closest('.hero-content,.hero__content,[class*="hero-content"],[class*="hero__content"],.banner-content,.banner__content,[class*="banner-content"],[class*="banner__content"]')||heroTitle.parentElement;
+    content?.classList.add('bpd-hero-content-refined');
+    const heroSection=findHomepageHeroContainer(heroTitle);
+    heroSection?.classList.add('bpd-hero-section-refined');
   }
+
+  const section=document.querySelector('#berita-desa,section.portal-news,.portal-news');
+  if(section){
+    const kicker=section.querySelector('.portal-news-head .kicker,.kicker');
+    if(kicker && /publikasi\s+desa/i.test(kicker.textContent||'')) kicker.textContent='Publikasi Kegiatan';
+    const heading=section.querySelector('.portal-news-head h2,h2');
+    if(heading && /berita\s+desa\s+somagede/i.test(heading.textContent||'')) heading.textContent='Badan Permusyawaratan Desa(BPD) Somagede';
+  }
+  return true;
 }
-applyPortalPresentationFixes();
+
+function ensurePortalPresentationFixes(){
+  applyPortalPresentationFixes();
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',applyPortalPresentationFixes,{once:true});
+  }
+  window.addEventListener('load',applyPortalPresentationFixes,{once:true});
+  [180,500,1000,1800].forEach(ms=>setTimeout(applyPortalPresentationFixes,ms));
+}
+
+ensurePortalPresentationFixes();
 
 const INITIAL_SLUG=new URL(location.href).searchParams.get('berita');
 if(INITIAL_SLUG){

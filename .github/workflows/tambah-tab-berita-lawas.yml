@@ -1,0 +1,136 @@
+name: Tambahkan Tab Berita Lawas
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tambah-tab-berita-lawas.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tambahkan tab Berita Lawas
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('bpd-portal-berita.js')
+          text=p.read_text(encoding='utf-8')
+
+          new_archive = r'''function archiveHTML(){
+            const currentYears=YEARS.filter(y=>Number(y.year)>=2020);
+            const oldYears=YEARS.filter(y=>Number(y.year)<2020).sort((a,b)=>Number(b.year)-Number(a.year));
+            const oldOpen=document.body.dataset.bpdOldYears==='1';
+
+            const yearHTML=(y)=>{
+              const year=String(y.year);
+              const opened=openYears.has(year);
+              const items=archiveCache.get(year);
+
+              return `
+                <div class="archive-year">
+                  <button type="button" class="archive-year-btn" data-year="${esc(year)}">
+                    <span>${opened?'▾':'▸'} ${esc(year)}</span>
+                    <span>${archiveCache.has(year)?archiveCache.get(year).length:Number(y.total||0)} arsip</span>
+                  </button>
+                  ${opened?`<div class="archive-year-items">${items?items.length?items.map(x=>`
+                    <a href="${esc(articleUrl(x))}" class="archive-item ${String(x.id)===String(ACTIVE_ID)?'active':''}" data-news-select="${x.id}">
+                      <span class="archive-item-date">${dateID(x.activity_date)}</span>
+                      <span class="archive-item-title">${esc(x.title)}</span>
+                    </a>`).join(''):'<div class="archive-loading">Tidak ada berita.</div>':''}</div>`:''}
+                </div>`;
+            };
+
+            return `
+              <div class="portal-side-section">
+                <div class="portal-side-heading">
+                  <span>Arsip Berita</span>
+                  <small>per tahun</small>
+                </div>
+
+                <div class="archive-years">
+                  ${currentYears.map(yearHTML).join('')}
+
+                  <div class="archive-year archive-lawas-group">
+                    <button type="button"
+                            class="archive-year-btn archive-old-btn"
+                            data-old-years="1">
+                      <span>${oldOpen?'▾':'▸'} Berita Lawas</span>
+                      <span>${oldYears.length?oldYears.length+' tahun':'belum tersedia'}</span>
+                    </button>
+
+                    ${oldOpen?`
+                      <div class="archive-year-items archive-old-years">
+                        ${oldYears.length
+                          ?oldYears.map(yearHTML).join('')
+                          :'<div class="archive-loading">Belum ada arsip sebelum 2020.</div>'}
+                      </div>`:''}
+                  </div>
+                </div>
+              </div>`;
+          }
+
+          function sideHTML(){return `${latestHTML()}${archiveHTML()}`;}'''
+
+          start=text.find('function archiveHTML(){')
+          end=text.find('function sideHTML(){', start)
+
+          if start < 0 or end < 0:
+              raise SystemExit('Blok archiveHTML/sideHTML tidak ditemukan.')
+
+          # Pertahankan fungsi setelah sideHTML.
+          side_end=text.find('\n}', end)
+          if side_end < 0:
+              raise SystemExit('Penutup fungsi sideHTML tidak ditemukan.')
+          side_end += 2
+
+          text=text[:start]+new_archive+text[side_end:]
+
+          marker="  const year=e.target.closest('[data-year]');if(year){e.preventDefault();toggleYear(year.dataset.year);return;}"
+
+          insert = (
+              "  const oldYearsToggle=e.target.closest('[data-old-years]');\n"
+              "  if(oldYearsToggle){\n"
+              "    e.preventDefault();\n"
+              "    document.body.dataset.bpdOldYears=document.body.dataset.bpdOldYears==='1'?'0':'1';\n"
+              "    refreshSide();\n"
+              "    return;\n"
+              "  }\n" + marker
+          )
+
+          if marker not in text:
+              raise SystemExit('Handler data-year tidak ditemukan.')
+
+          text=text.replace(marker,insert,1)
+          p.write_text(text,encoding='utf-8')
+          PY
+
+      - name: Validasi
+        shell: bash
+        run: |
+          node --check bpd-portal-berita.js
+          grep -q 'Berita Lawas' bpd-portal-berita.js
+          grep -q 'data-old-years' bpd-portal-berita.js
+          echo "VALID: Tab Berita Lawas tersedia di bawah tahun 2020."
+
+      - name: Commit hasil dan hapus workflow sekali jalan
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bpd-portal-berita.js
+          git rm .github/workflows/tambah-tab-berita-lawas.yml
+          git commit -m "Tambahkan tab Berita Lawas di bawah 2020"
+          git push

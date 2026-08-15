@@ -1,4 +1,4 @@
-name: Permanenkan URL Share BPD Somagede
+name: Sinkron Preview Berita BPD Somagede
 
 on:
   workflow_dispatch:
@@ -6,12 +6,14 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/main.yml'
+  schedule:
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: write
 
 jobs:
-  permanent-share-fix:
+  sync-preview:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,85 +22,261 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Ubah semua share ke GitHub Pages
+      - name: Buat halaman preview statis semua berita
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
+          from urllib.request import Request, urlopen
+          from urllib.parse import quote, urljoin
+          import json, html, re
 
-          p = Path('bpd-portal-berita.js')
-          text = p.read_text(encoding='utf-8')
+          API='https://bpd-somagede-cms.bpddesasomagede.workers.dev'
+          SITE='https://bpdsomagede.github.io/'
+          OUT=Path('berita')
+          OUT.mkdir(exist_ok=True)
 
-          old = """function shareUrl(item){
-            return `${API}/berita/${encodeURIComponent(item.slug)}`;
-          }"""
+          def get_json(path):
+              req=Request(API+path,headers={
+                  'User-Agent':'BPD-Somagede-GitHub-Pages-Preview-Sync/1.0',
+                  'Accept':'application/json'
+              })
+              with urlopen(req,timeout=30) as r:
+                  return json.loads(r.read().decode('utf-8'))
 
-          new = """function shareUrl(item){
-            const u=new URL('https://bpdsomagede.github.io/');
-            u.searchParams.set('berita',item.slug);
-            u.hash='bpdPortalBerita';
-            return u.toString();
-          }"""
+          def clean_text(value,limit=180):
+              s=re.sub(r'<[^>]+>',' ',str(value or ''))
+              s=re.sub(r'\s+',' ',s).strip()
+              return s[:limit].rstrip()
 
-          if old in text:
-              text = text.replace(old, new, 1)
-          else:
-              pattern = r"""function shareUrl\(item\)\{\s*return\s+`\$\{API\}/berita/\$\{encodeURIComponent\(item\.slug\)\}`;\s*\}"""
-              text2, n = re.subn(pattern, new, text, count=1, flags=re.S)
-              if n == 1:
-                  text = text2
-              elif "function shareUrl(item){" in text and "https://bpdsomagede.github.io/" in text:
-                  print("URL share GitHub Pages sudah aktif.")
+          records={}
+
+          try:
+              a=get_json('/api/archive')
+              for row in a.get('years') or []:
+                  year=str(row.get('year') or '').strip()
+                  if not year:
+                      continue
+                  try:
+                      d=get_json('/api/archive/'+quote(year,safe=''))
+                      for item in d.get('items') or []:
+                          slug=str(item.get('slug') or '').strip()
+                          if slug:
+                              records[slug]=item
+                  except Exception as e:
+                      print('Peringatan arsip',year,e)
+          except Exception as e:
+              print('Peringatan daftar arsip:',e)
+
+          try:
+              d=get_json('/api/activities?limit=500')
+              for item in d.get('items') or []:
+                  slug=str(item.get('slug') or '').strip()
+                  if slug:
+                      records[slug]=item
+          except Exception as e:
+              print('Peringatan daftar aktivitas:',e)
+
+          if not records:
+              raise SystemExit('Tidak ada data berita yang berhasil dibaca dari API.')
+
+          generated=0
+          with_image=0
+
+          for slug,base in sorted(records.items()):
+              item=dict(base)
+              try:
+                  detail=get_json('/api/activities/slug/'+quote(slug,safe=''))
+                  if detail.get('ok') and detail.get('item'):
+                      item.update(detail['item'])
+              except Exception as e:
+                  print('Detail fallback:',slug,e)
+
+              title=clean_text(item.get('title') or 'Berita BPD Somagede',220)
+              desc=clean_text(
+                  item.get('excerpt') or item.get('summary') or item.get('content') or
+                  'Informasi kegiatan Badan Permusyawaratan Desa Somagede.',
+                  190
+              )
+
+              cover=str(item.get('cover_url') or '').strip()
+              if not cover:
+                  imgs=item.get('images') or []
+                  if isinstance(imgs,list):
+                      for img in imgs:
+                          if isinstance(img,dict) and img.get('url'):
+                              cover=str(img['url']).strip()
+                              break
+                          if isinstance(img,str) and img.strip():
+                              cover=img.strip()
+                              break
+
+              if cover:
+                  with_image+=1
+                  if cover.startswith('/'):
+                      cover=urljoin(SITE,cover)
               else:
-                  raise SystemExit("Fungsi shareUrl aktif tidak ditemukan.")
+                  cover=SITE+'bpd-favicon.png'
 
-          p.write_text(text, encoding='utf-8')
+              safe_slug=quote(slug,safe='-._~')
+              preview_url=f'{SITE}berita/{safe_slug}/'
+              article_url=f'{SITE}?berita={quote(slug,safe="")}#bpdPortalBerita'
 
-          # Bump versi JS agar HP/WhatsApp tidak memakai cache lama.
-          idx = Path('index.html')
-          html = idx.read_text(encoding='utf-8')
-          html, n = re.subn(
-              r"""bpd-portal-berita\.js(?:\?v=[^"']*)?""",
-              "bpd-portal-berita.js?v=20260815-share-github-final",
-              html
+              esc_title=html.escape(title,quote=True)
+              esc_desc=html.escape(desc,quote=True)
+              esc_cover=html.escape(cover,quote=True)
+              esc_preview=html.escape(preview_url,quote=True)
+              esc_article=html.escape(article_url,quote=True)
+              js_target=json.dumps(article_url,ensure_ascii=False)
+
+              schema=json.dumps({
+                  "@context":"https://schema.org",
+                  "@type":"NewsArticle",
+                  "headline":title,
+                  "description":desc,
+                  "datePublished":item.get("activity_date") or None,
+                  "image":[cover],
+                  "mainEntityOfPage":preview_url,
+                  "inLanguage":"id-ID",
+                  "publisher":{
+                      "@type":"GovernmentOrganization",
+                      "name":"BPD Somagede",
+                      "url":SITE
+                  }
+              },ensure_ascii=False).replace("</","<\\/")
+
+              page=f"""<!doctype html>
+          <html lang="id">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>{esc_title} | BPD Somagede</title>
+          <meta name="description" content="{esc_desc}">
+          <link rel="canonical" href="{esc_preview}">
+          <meta property="og:type" content="article">
+          <meta property="og:site_name" content="BPD Somagede">
+          <meta property="og:title" content="{esc_title}">
+          <meta property="og:description" content="{esc_desc}">
+          <meta property="og:url" content="{esc_preview}">
+          <meta property="og:image" content="{esc_cover}">
+          <meta property="og:image:secure_url" content="{esc_cover}">
+          <meta property="og:image:alt" content="{esc_title}">
+          <meta property="og:locale" content="id_ID">
+          <meta name="twitter:card" content="summary_large_image">
+          <meta name="twitter:title" content="{esc_title}">
+          <meta name="twitter:description" content="{esc_desc}">
+          <meta name="twitter:image" content="{esc_cover}">
+          <script type="application/ld+json">{schema}</script>
+          <style>
+          body{{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f4f7f6;color:#17352d}}
+          main{{max-width:760px;margin:40px auto;padding:24px}}
+          img{{display:block;width:100%;max-height:440px;object-fit:cover;border-radius:14px}}
+          h1{{font-size:clamp(25px,4vw,40px);line-height:1.15}}
+          p{{line-height:1.65}}
+          a{{color:#087f5b;font-weight:700}}
+          </style>
+          <script>
+          window.addEventListener('DOMContentLoaded',function(){{
+            window.location.replace({js_target});
+          }});
+          </script>
+          </head>
+          <body>
+          <main>
+            <img src="{esc_cover}" alt="{esc_title}">
+            <h1>{esc_title}</h1>
+            <p>{esc_desc}</p>
+            <p><a href="{esc_article}">Buka berita di website resmi BPD Somagede</a></p>
+          </main>
+          </body>
+          </html>
+          """
+
+              folder=OUT/safe_slug
+              folder.mkdir(parents=True,exist_ok=True)
+              (folder/'index.html').write_text(page,encoding='utf-8')
+              generated+=1
+
+          (OUT/'index.html').write_text(
+              '<!doctype html><meta charset="utf-8"><title>Berita BPD Somagede</title>'
+              '<script>location.replace("https://bpdsomagede.github.io/#bpdPortalBerita")</script>'
+              '<a href="https://bpdsomagede.github.io/#bpdPortalBerita">Berita BPD Somagede</a>',
+              encoding='utf-8'
+          )
+
+          js=Path('bpd-portal-berita.js')
+          text=js.read_text(encoding='utf-8')
+          replacement="""function shareUrl(item){
+            const slug=encodeURIComponent(item?.slug||'');
+            return `https://bpdsomagede.github.io/berita/${slug}/`;
+          }"""
+          text2,n=re.subn(
+              r'function shareUrl\(item\)\{.*?\n\}',
+              replacement,
+              text,
+              count=1,
+              flags=re.S
+          )
+          if n != 1:
+              raise SystemExit(f'Fungsi shareUrl tidak ditemukan tepat satu kali: {n}')
+          js.write_text(text2,encoding='utf-8')
+
+          idx=Path('index.html')
+          source=idx.read_text(encoding='utf-8')
+          source,n=re.subn(
+              r'bpd-portal-berita\.js(?:\?v=[^"\']*)?',
+              'bpd-portal-berita.js?v=20260815-static-preview-final',
+              source
           )
           if n == 0:
-              raise SystemExit("Referensi bpd-portal-berita.js tidak ditemukan di index.html.")
-          idx.write_text(html, encoding='utf-8')
+              raise SystemExit('Referensi bpd-portal-berita.js tidak ditemukan di index.html')
+          idx.write_text(source,encoding='utf-8')
+
+          print(f'Preview dibuat: {generated}; memakai foto artikel: {with_image}')
           PY
 
-      - name: Validasi hasil final
+      - name: Validasi preview dan JavaScript
         shell: bash
         run: |
           node --check bpd-portal-berita.js
           python - <<'PY'
           from pathlib import Path
-          t=Path('bpd-portal-berita.js').read_text(encoding='utf-8')
-          start=t.index('function shareUrl(item){')
-          end=t.index('\n}',start)+2
-          block=t[start:end]
+
+          js=Path('bpd-portal-berita.js').read_text(encoding='utf-8')
+          start=js.index('function shareUrl(item){')
+          end=js.index('\n}',start)+2
+          block=js[start:end]
           print(block)
 
-          if 'workers.dev' in block or '${API}/berita/' in block:
-              raise SystemExit('GAGAL: Worker masih dipakai sebagai URL share.')
-          if 'https://bpdsomagede.github.io/' not in block:
-              raise SystemExit('GAGAL: URL GitHub Pages belum menjadi URL share.')
-          print('SUKSES: semua share sekarang memakai bpdsomagede.github.io')
+          if 'workers.dev' in block or '?berita=' in block:
+              raise SystemExit('URL share belum menggunakan halaman statis /berita/<slug>/')
+          if 'bpdsomagede.github.io/berita/' not in block:
+              raise SystemExit('Domain/path share final tidak ditemukan.')
+
+          pages=list(Path('berita').glob('*/index.html'))
+          if not pages:
+              raise SystemExit('Tidak ada halaman preview statis yang dibuat.')
+
+          sample=pages[0].read_text(encoding='utf-8')
+          for token in ('og:title','og:image','og:url','twitter:card'):
+              if token not in sample:
+                  raise SystemExit(f'Meta preview hilang: {token}')
+
+          print('VALID: halaman preview statis siap untuk WhatsApp/Facebook/Telegram.')
           PY
 
-      - name: Commit otomatis
+      - name: Simpan sinkronisasi
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add bpd-portal-berita.js index.html
+          git add berita bpd-portal-berita.js index.html
 
           if git diff --cached --quiet; then
-            echo "Perbaikan permanen sudah aktif."
+            echo "Tidak ada perubahan data preview."
             exit 0
           fi
 
-          git commit -m "Permanenkan semua URL share ke bpdsomagede.github.io"
+          git commit -m "Sinkronkan preview foto dan judul semua berita"
           git push

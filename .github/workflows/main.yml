@@ -1,4 +1,4 @@
-name: Pulihkan Portal Berita BPD Somagede
+name: Permanenkan URL Share BPD Somagede
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  pulihkan-portal:
+  permanent-share-fix:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,7 +20,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Pulihkan helper hero tanpa menyentuh data berita
+      - name: Ubah semua share ke GitHub Pages
         shell: bash
         run: |
           python - <<'PY'
@@ -30,55 +30,75 @@ jobs:
           p = Path('bpd-portal-berita.js')
           text = p.read_text(encoding='utf-8')
 
-          helper = r"""
-          function findHomepageHeroTitle(){
-            const scoped=[
-              ...document.querySelectorAll('.hero h1,.hero h2,.hero h3,.banner h1,.banner h2,.banner h3,.masthead h1,.masthead h2,.masthead h3')
-            ];
-            return scoped.find(el=>/Bersama\s+Masyarakat|Pembangunan\s+Desa/i.test(el.textContent||''))
-              || [...document.querySelectorAll('h1,h2,h3')].find(el=>/Bersama\s+Masyarakat|Pembangunan\s+Desa/i.test(el.textContent||''))
-              || document.querySelector('.hero h1,.hero h2,.hero h3');
-          }
+          old = """function shareUrl(item){
+            return `${API}/berita/${encodeURIComponent(item.slug)}`;
+          }"""
 
-          function findHomepageHeroContainer(title){
-            return title?.closest('.hero,.hero-section,.hero-banner,.banner,.masthead,[class*="hero"],[class*="banner"]')
-              || title?.parentElement
-              || null;
-          }
-          """
+          new = """function shareUrl(item){
+            const u=new URL('https://bpdsomagede.github.io/');
+            u.searchParams.set('berita',item.slug);
+            u.hash='bpdPortalBerita';
+            return u.toString();
+          }"""
 
-          marker = 'function applyPortalPresentationFixes(){'
-          if 'function findHomepageHeroTitle(){' not in text:
-              if marker not in text:
-                  raise SystemExit('Marker hero tidak ditemukan')
-              text = text.replace(marker, helper + '\n' + marker, 1)
+          if old in text:
+              text = text.replace(old, new, 1)
+          else:
+              pattern = r"""function shareUrl\(item\)\{\s*return\s+`\$\{API\}/berita/\$\{encodeURIComponent\(item\.slug\)\}`;\s*\}"""
+              text2, n = re.subn(pattern, new, text, count=1, flags=re.S)
+              if n == 1:
+                  text = text2
+              elif "function shareUrl(item){" in text and "https://bpdsomagede.github.io/" in text:
+                  print("URL share GitHub Pages sudah aktif.")
+              else:
+                  raise SystemExit("Fungsi shareUrl aktif tidak ditemukan.")
 
           p.write_text(text, encoding='utf-8')
 
+          # Bump versi JS agar HP/WhatsApp tidak memakai cache lama.
           idx = Path('index.html')
           html = idx.read_text(encoding='utf-8')
-          html, count = re.subn(
-              r'bpd-portal-berita\.js(?:\?v=[^"\']*)?',
-              'bpd-portal-berita.js?v=20260812-recovery1',
+          html, n = re.subn(
+              r"""bpd-portal-berita\.js(?:\?v=[^"']*)?""",
+              "bpd-portal-berita.js?v=20260815-share-github-final",
               html
           )
-          if count == 0:
-              raise SystemExit('Referensi bpd-portal-berita.js tidak ditemukan di index.html')
+          if n == 0:
+              raise SystemExit("Referensi bpd-portal-berita.js tidak ditemukan di index.html.")
           idx.write_text(html, encoding='utf-8')
           PY
 
-      - name: Validasi JavaScript
-        run: node --check bpd-portal-berita.js
+      - name: Validasi hasil final
+        shell: bash
+        run: |
+          node --check bpd-portal-berita.js
+          python - <<'PY'
+          from pathlib import Path
+          t=Path('bpd-portal-berita.js').read_text(encoding='utf-8')
+          start=t.index('function shareUrl(item){')
+          end=t.index('\n}',start)+2
+          block=t[start:end]
+          print(block)
 
-      - name: Simpan pemulihan
+          if 'workers.dev' in block or '${API}/berita/' in block:
+              raise SystemExit('GAGAL: Worker masih dipakai sebagai URL share.')
+          if 'https://bpdsomagede.github.io/' not in block:
+              raise SystemExit('GAGAL: URL GitHub Pages belum menjadi URL share.')
+          print('SUKSES: semua share sekarang memakai bpdsomagede.github.io')
+          PY
+
+      - name: Commit otomatis
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add bpd-portal-berita.js index.html
+
           if git diff --cached --quiet; then
-            echo "Portal sudah dalam kondisi pulih."
+            echo "Perbaikan permanen sudah aktif."
             exit 0
           fi
-          git commit -m "Pulihkan loader portal berita dan hero beranda"
+
+          git commit -m "Permanenkan semua URL share ke bpdsomagede.github.io"
           git push

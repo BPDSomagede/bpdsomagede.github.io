@@ -522,46 +522,59 @@ function latestHTML(){
 }
 
 function archiveHTML(){
+  const currentYears=YEARS.filter(y=>Number(y.year)>=2020);
+  const oldYears=YEARS.filter(y=>Number(y.year)<2020).sort((a,b)=>Number(b.year)-Number(a.year));
+  const oldOpen=document.body.dataset.bpdOldYears==='1';
+
+  const yearHTML=(y)=>{
+    const year=String(y.year);
+    const opened=openYears.has(year);
+    const items=archiveCache.get(year);
+
+    return `
+      <div class="archive-year">
+        <button type="button" class="archive-year-btn" data-year="${esc(year)}">
+          <span>${opened?'▾':'▸'} ${esc(year)}</span>
+          <span>${archiveCache.has(year)?archiveCache.get(year).length:Number(y.total||0)} arsip</span>
+        </button>
+        ${opened?`<div class="archive-year-items">${items?items.length?items.map(x=>`
+          <a href="${esc(articleUrl(x))}" class="archive-item ${String(x.id)===String(ACTIVE_ID)?'active':''}" data-news-select="${x.id}">
+            <span class="archive-item-date">${dateID(x.activity_date)}</span>
+            <span class="archive-item-title">${esc(x.title)}</span>
+          </a>`).join(''):'<div class="archive-loading">Tidak ada berita.</div>':''}</div>`:''}
+      </div>`;
+  };
+
   return `
     <div class="portal-side-section">
-      <div class="portal-side-heading"><span>Arsip Berita</span><small>per tahun</small></div>
+      <div class="portal-side-heading">
+        <span>Arsip Berita</span>
+        <small>per tahun</small>
+      </div>
+
       <div class="archive-years">
-        ${YEARS.map(y=>{
-          const year=String(y.year);
-          const opened=openYears.has(year);
-          const items=archiveCache.get(year);
-          return `
-            <div class="archive-year">
-              <button type="button" class="archive-year-btn" data-year="${esc(year)}">
-                <span>${opened?'▾':'▸'} ${esc(year)}</span>
-                <span>${archiveCache.has(year)?archiveCache.get(year).length:Number(y.total||0)} arsip</span>
-              </button>
-              ${opened?`<div class="archive-year-items">${items?items.length?items.map(x=>`
-                <a href="${esc(articleUrl(x))}" class="archive-item ${String(x.id)===String(ACTIVE_ID)?'active':''}" data-news-select="${x.id}">
-                  <span class="archive-item-date">${dateID(x.activity_date)}</span>
-                  <span class="archive-item-title">${esc(x.title)}</span>
-                </a>`).join(''):'<div class="archive-loading">Tidak ada berita.</div>':''}</div>`:''}
-            </div>`;
-        }).join('')}
+        ${currentYears.map(yearHTML).join('')}
+
+        <div class="archive-year archive-lawas-group">
+          <button type="button"
+                  class="archive-year-btn archive-old-btn"
+                  data-old-years="1">
+            <span>${oldOpen?'▾':'▸'} Berita Lawas</span>
+            <span>${oldYears.length?oldYears.length+' tahun':'belum tersedia'}</span>
+          </button>
+
+          ${oldOpen?`
+            <div class="archive-year-items archive-old-years">
+              ${oldYears.length
+                ?oldYears.map(yearHTML).join('')
+                :'<div class="archive-loading">Belum ada arsip sebelum 2020.</div>'}
+            </div>`:''}
+        </div>
       </div>
     </div>`;
 }
 
 function sideHTML(){return `${latestHTML()}${archiveHTML()}`;}
-
-function buildShell(){
-  mount.innerHTML=`
-    <div class="portal-news-layout">
-      <article class="portal-news-main" id="portalArticle" aria-live="polite"></article>
-      <aside class="portal-news-side"><div id="portalSide">${sideHTML()}</div></aside>
-    </div>`;
-  if(!document.getElementById('portalToast')){
-    const t=document.createElement('div');
-    t.className='portal-toast';
-    t.id='portalToast';
-    document.body.appendChild(t);
-  }
-}
 
 function refreshSide(){const root=document.getElementById('portalSide');if(root)root.innerHTML=sideHTML();}
 function toast(message){const t=document.getElementById('portalToast');if(!t)return;t.textContent=message;t.classList.add('show');clearTimeout(toast._timer);toast._timer=setTimeout(()=>t.classList.remove('show'),2200);}
@@ -723,6 +736,13 @@ mount.addEventListener('click',e=>{
   const next=e.target.closest('[data-insta-next]');if(next){e.preventDefault();const g=next.closest('[data-insta-gallery]');if(g)setInstaGallery(g,Number(g.dataset.index||0)+1);return;}
   const dot=e.target.closest('[data-insta-dot]');if(dot){e.preventDefault();const g=dot.closest('[data-insta-gallery]');if(g)setInstaGallery(g,Number(dot.dataset.instaDot||0));return;}
   const news=e.target.closest('[data-news-select]');if(news){e.preventDefault();selectNews(news.dataset.newsSelect,{scroll:true,updateUrl:true});return;}
+  const oldYearsToggle=e.target.closest('[data-old-years]');
+  if(oldYearsToggle){
+    e.preventDefault();
+    document.body.dataset.bpdOldYears=document.body.dataset.bpdOldYears==='1'?'0':'1';
+    refreshSide();
+    return;
+  }
   const year=e.target.closest('[data-year]');if(year){e.preventDefault();toggleYear(year.dataset.year);return;}
   if(e.target.closest('[data-like]')){e.preventDefault();toggleLike();return;}
   if(e.target.closest('[data-go-comments]')){e.preventDefault();document.getElementById('komentar-berita')?.scrollIntoView({behavior:'smooth',block:'start'});return;}

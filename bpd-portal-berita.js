@@ -754,7 +754,18 @@ mount.addEventListener('pointerdown',e=>{const g=e.target.closest('[data-insta-g
 mount.addEventListener('pointerup',e=>{if(!SWIPE_GALLERY)return;const dx=e.clientX-SWIPE_X;const g=SWIPE_GALLERY;SWIPE_GALLERY=null;if(Math.abs(dx)<42)return;setInstaGallery(g,Number(g.dataset.index||0)+(dx<0?1:-1));},{passive:true});
 mount.addEventListener('pointercancel',()=>{SWIPE_GALLERY=null},{passive:true});
 mount.addEventListener('submit',e=>{const form=e.target.closest('[data-comment-form]');if(!form)return;e.preventDefault();submitComment(form);});
-
+function buildShell(){
+  mount.innerHTML=`
+    <div class="portal-news-layout">
+      <main class="portal-news-main" id="portalArticle">
+        <div class="portal-news-loading">Memuat berita terbaru…</div>
+      </main>
+      <aside class="portal-news-side" aria-label="Arsip dan berita terbaru">
+        <div id="portalSide"></div>
+      </aside>
+    </div>
+    <div class="portal-toast" id="portalToast" aria-live="polite"></div>`;
+}
 async function load(){
   buildShell();
   try{

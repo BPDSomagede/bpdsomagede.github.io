@@ -356,7 +356,10 @@ function articleUrl(item){
 }
 
 function shareUrl(item){
-  return `${API}/berita/${encodeURIComponent(item.slug)}`;
+  const u=new URL('https://bpdsomagede.github.io/');
+  u.searchParams.set('berita',item.slug);
+  u.hash='bpdPortalBerita';
+  return u.toString();
 }
 
 function updateBrowserUrl(item){

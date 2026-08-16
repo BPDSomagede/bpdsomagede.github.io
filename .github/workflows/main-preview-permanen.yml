@@ -1,0 +1,236 @@
+name: Permanenkan Preview Berita BPD Somagede
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/main-preview-permanen.yml'
+  schedule:
+    - cron: '*/10 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: permanenkan-preview-berita
+  cancel-in-progress: true
+
+env:
+  CMS: https://bpd-somagede-cms.bpddesasomagede.workers.dev
+  SITE: https://bpdsomagede.github.io
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pasang dependensi
+        run: python -m pip install --disable-pip-version-check requests
+
+      - name: Generate halaman berita + foto lokal
+        env:
+          CMS: ${{ env.CMS }}
+          SITE: ${{ env.SITE }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urljoin
+          import html
+          import mimetypes
+          import re
+          import requests
+          import time
+
+          CMS = 'https://bpd-somagede-cms.bpddesasomagede.workers.dev'
+          SITE = 'https://bpdsomagede.github.io'
+          session = requests.Session()
+          session.headers.update({'User-Agent': 'BPD-Somagede-GitHubActions/1.0'})
+
+          def get_json(url):
+              r = session.get(url, timeout=30)
+              r.raise_for_status()
+              data = r.json()
+              if isinstance(data, dict) and data.get('ok') is False:
+                  raise RuntimeError(data.get('error') or f'API gagal: {url}')
+              return data
+
+          def pick_list(data):
+              if isinstance(data, list):
+                  return data
+              if not isinstance(data, dict):
+                  return []
+              for key in ('items','activities','data','results'):
+                  value = data.get(key)
+                  if isinstance(value, list):
+                      return value
+              return []
+
+          # Endpoint utama yang dipakai portal saat ini.
+          data = get_json(f'{CMS}/api/activities')
+          items = pick_list(data)
+          if not items:
+              raise SystemExit('API /api/activities tidak mengembalikan daftar berita.')
+
+          print(f'Ditemukan {len(items)} berita dari CMS.')
+
+          def safe_slug(value):
+              value = re.sub(r'[^a-zA-Z0-9_-]+', '-', str(value or '').strip().lower()).strip('-')
+              return value or 'berita'
+
+          def image_url(item):
+              cover = str(item.get('cover_url') or '').strip()
+              if cover:
+                  return cover
+              imgs = item.get('images')
+              if isinstance(imgs, list):
+                  for x in imgs:
+                      if isinstance(x, dict) and x.get('url'):
+                          return str(x['url']).strip()
+              return ''
+
+          def ext_for(url, content_type=''):
+              ext = Path(url.split('?',1)[0]).suffix.lower()
+              if ext in ('.jpg','.jpeg','.png','.webp','.gif'):
+                  return '.jpg' if ext == '.jpeg' else ext
+              guessed = mimetypes.guess_extension(content_type.split(';')[0].strip())
+              return guessed if guessed in ('.jpg','.jpeg','.png','.webp','.gif') else '.jpg'
+
+          def text(value):
+              return html.escape(str(value or ''))
+
+          created = 0
+          failed = []
+
+          for n, summary in enumerate(items, 1):
+              try:
+                  ident = summary.get('id')
+                  slug = safe_slug(summary.get('slug'))
+                  if not slug:
+                      continue
+
+                  # Detail API dipakai agar foto/content selalu mengikuti berita sebenarnya.
+                  item = summary
+                  if ident is not None:
+                      try:
+                          detail = get_json(f'{CMS}/api/activities/{ident}')
+                          if isinstance(detail, dict) and isinstance(detail.get('item'), dict):
+                              item = detail['item']
+                      except Exception as e:
+                          print(f'  Detail {ident} gagal, memakai data daftar: {e}')
+
+                  slug = safe_slug(item.get('slug') or slug)
+                  title = str(item.get('title') or 'Berita BPD Somagede')
+                  description = str(item.get('excerpt') or item.get('content') or '').replace('\n',' ')
+                  description = re.sub(r'\s+', ' ', description).strip()[:180]
+                  canonical = f'{SITE}/berita/{slug}/'
+
+                  folder = Path('berita') / slug
+                  folder.mkdir(parents=True, exist_ok=True)
+
+                  remote_img = image_url(item)
+                  local_img = ''
+                  if remote_img:
+                      try:
+                          rimg = session.get(remote_img, timeout=45)
+                          rimg.raise_for_status()
+                          ext = ext_for(remote_img, rimg.headers.get('content-type',''))
+                          image_path = folder / f'cover{ext}'
+                          image_path.write_bytes(rimg.content)
+                          local_img = f'{SITE}/berita/{slug}/cover{ext}'
+                      except Exception as e:
+                          print(f'  Foto {slug} gagal diunduh: {e}')
+
+                  og_image = local_img or remote_img or f'{SITE}/bpd-favicon.png'
+                  date_published = text(item.get('activity_date') or '')
+                  content = text(item.get('content') or item.get('excerpt') or '')
+                  content = content.replace('\r\n','\n').replace('\r','\n')
+                  content_html = ''.join(f'<p>{text(p.strip())}</p>' for p in content.split('\n\n') if p.strip())
+                  if not content_html:
+                      content_html = f'<p>{text(description)}</p>'
+
+                  page = f'''<!doctype html>
+          <html lang="id">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>{text(title)} | BPD Somagede</title>
+          <meta name="description" content="{text(description)}">
+          <link rel="canonical" href="{canonical}">
+          <meta property="og:type" content="article">
+          <meta property="og:site_name" content="BPD Somagede">
+          <meta property="og:title" content="{text(title)}">
+          <meta property="og:description" content="{text(description)}">
+          <meta property="og:url" content="{canonical}">
+          <meta property="og:image" content="{text(og_image)}">
+          <meta property="og:image:alt" content="{text(title)}">
+          <meta name="twitter:card" content="summary_large_image">
+          <meta name="twitter:title" content="{text(title)}">
+          <meta name="twitter:description" content="{text(description)}">
+          <meta name="twitter:image" content="{text(og_image)}">
+          <script type="application/ld+json">{{"@context":"https://schema.org","@type":"NewsArticle","headline":{__import__('json').dumps(title, ensure_ascii=False)},"description":{__import__('json').dumps(description, ensure_ascii=False)},"url":{__import__('json').dumps(canonical)},"image":[{__import__('json').dumps(og_image)}],"datePublished":{__import__('json').dumps(str(item.get('activity_date') or ''))},"inLanguage":"id-ID","publisher":{{"@type":"Organization","name":"BPD Somagede","url":"{SITE}/"}}}}</script>
+          <style>
+          body{{font-family:Arial,Helvetica,sans-serif;max-width:900px;margin:0 auto;padding:24px;line-height:1.7;color:#18201d;background:#fff}}
+          img{{max-width:100%;height:auto;border-radius:12px}}
+          a{{color:#176b52}}
+          </style>
+          </head>
+          <body>
+          <main>
+          <p><a href="{SITE}/">← BPD Somagede</a></p>
+          <article>
+          <h1>{text(title)}</h1>
+          {f'<p><strong>{date_published}</strong></p>' if date_published else ''}
+          {f'<p><img src="{text(og_image)}" alt="{text(title)}"></p>' if og_image else ''}
+          {content_html}
+          </article>
+          </main>
+          </body>
+          </html>
+          '''
+                  (folder / 'index.html').write_text(page, encoding='utf-8')
+                  created += 1
+                  print(f'[{n}/{len(items)}] OK {slug}')
+              except Exception as e:
+                  failed.append(str(e))
+                  print(f'[{n}/{len(items)}] GAGAL: {e}')
+
+          if created == 0:
+              raise SystemExit('Tidak ada halaman berita yang berhasil dibuat.')
+          if failed:
+              print(f'Peringatan: {len(failed)} berita gagal diproses.')
+          print(f'Selesai: {created} halaman berita permanen.')
+          PY
+
+      - name: Validasi hasil
+        run: |
+          test -f berita/*/index.html
+          python - <<'PY'
+          from pathlib import Path
+          pages = list(Path('berita').glob('*/index.html'))
+          assert pages, 'Tidak ada halaman berita.'
+          bad = []
+          for p in pages:
+              s = p.read_text(encoding='utf-8')
+              if 'og:image' not in s or 'canonical' not in s:
+                  bad.append(str(p))
+          assert not bad, 'Halaman tanpa OG image/canonical: ' + ', '.join(bad[:10])
+          print(f'VALID: {len(pages)} halaman berita memiliki OG image + canonical.')
+          PY
+
+      - name: Commit otomatis
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add berita
+          if git diff --cached --quiet; then
+            echo 'Tidak ada perubahan berita.'
+            exit 0
+          fi
+          git commit -m 'Permanenkan preview berita dengan foto lokal'
+          git push

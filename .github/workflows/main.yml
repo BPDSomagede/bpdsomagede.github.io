@@ -1,29 +1,125 @@
 name: Sinkron Preview Berita BPD Somagede
+
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
   push:
     branches: [main]
     paths:
       - '.github/workflows/main.yml'
-      - 'berita/**'
-      - 'bpd-portal-berita.js'
+
+concurrency:
+  group: bpd-preview-sync
+  cancel-in-progress: false
+
 permissions:
-  contents: read
+  contents: write
+
 jobs:
-  validate:
+  sync-preview:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Validasi preview
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Generate preview pages
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          from urllib.parse import quote, urljoin
+          import json, html, re
+
+          API='https://bpd-somagede-cms.bpddesasomagede.workers.dev'
+          SITE='https://bpdsomagede.github.io/'
+          OUT=Path('berita'); OUT.mkdir(exist_ok=True)
+
+          def get_json(path):
+              req=Request(API+path,headers={'User-Agent':'BPD-Somagede-Preview-Sync/1.0','Accept':'application/json'})
+              with urlopen(req,timeout=30) as r: return json.loads(r.read().decode('utf-8'))
+          def clean(v,n=190):
+              s=re.sub(r'<[^>]+>',' ',str(v or '')); s=re.sub(r'\s+',' ',s).strip(); return s[:n].rstrip()
+
+          records={}
+          try:
+              years=get_json('/api/archive').get('years') or []
+              for row in years:
+                  y=str(row.get('year') or '').strip()
+                  if not y: continue
+                  try:
+                      for x in get_json('/api/archive/'+quote(y,safe='')).get('items') or []:
+                          if x.get('slug'): records[str(x['slug'])]=x
+                  except Exception as e: print('archive',y,e)
+          except Exception as e: print('archive list',e)
+          try:
+              for x in get_json('/api/activities?limit=500').get('items') or []:
+                  if x.get('slug'): records[str(x['slug'])]=x
+          except Exception as e: print('activities',e)
+          if not records: raise SystemExit('CMS tidak mengembalikan berita.')
+
+          for slug,base in sorted(records.items()):
+              item=dict(base)
+              try:
+                  d=get_json('/api/activities/slug/'+quote(slug,safe=''))
+                  if d.get('ok') and d.get('item'): item.update(d['item'])
+              except Exception as e: print('detail',slug,e)
+
+              sslug=quote(slug,safe='-._~'); folder=OUT/sslug; folder.mkdir(parents=True,exist_ok=True)
+              title=clean(item.get('title') or 'Berita BPD Somagede',220)
+              desc=clean(item.get('excerpt') or item.get('summary') or item.get('content') or 'Informasi kegiatan Badan Permusyawaratan Desa Somagede.')
+
+              # ATURAN PERMANEN: jika cover.jpg sudah ada, JANGAN PERNAH menimpanya.
+              local=folder/'cover.jpg'
+              if local.exists() and local.stat().st_size:
+                  cover=f'{SITE}berita/{sslug}/cover.jpg'
+              else:
+                  cover=str(item.get('cover_url') or '').strip()
+                  if not cover:
+                      for img in (item.get('images') or []):
+                          if isinstance(img,dict) and img.get('url'): cover=str(img['url']).strip(); break
+                          if isinstance(img,str) and img.strip(): cover=img.strip(); break
+                  if cover.startswith('/'): cover=urljoin(SITE,cover)
+                  if not cover: cover=SITE+'bpd-favicon.png'
+
+              url=f'{SITE}berita/{sslug}/'; article=f'{SITE}?berita={quote(slug,safe="")}#bpdPortalBerita'
+              t=html.escape(title,quote=True); d=html.escape(desc,quote=True); c=html.escape(cover,quote=True); u=html.escape(url,quote=True)
+              schema=json.dumps({'@context':'https://schema.org','@type':'NewsArticle','headline':title,'description':desc,'datePublished':item.get('activity_date') or None,'image':[cover],'mainEntityOfPage':url,'inLanguage':'id-ID','publisher':{'@type':'GovernmentOrganization','name':'BPD Somagede','url':SITE}},ensure_ascii=False)
+              page=f'''<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>{t} | BPD Somagede</title><meta name="description" content="{d}"><link rel="canonical" href="{u}">
+          <meta property="og:type" content="article"><meta property="og:site_name" content="BPD Somagede"><meta property="og:title" content="{t}"><meta property="og:description" content="{d}"><meta property="og:url" content="{u}"><meta property="og:image" content="{c}"><meta property="og:image:secure_url" content="{c}"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="{t}"><meta property="og:locale" content="id_ID">
+          <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{t}"><meta name="twitter:description" content="{d}"><meta name="twitter:image" content="{c}"><script type="application/ld+json">{schema}</script></head>
+          <body><main><img src="{c}" alt="{t}" style="max-width:100%;height:auto"><h1>{t}</h1><p>{d}</p><p><a href="{html.escape(article,quote=True)}">Buka berita</a></p></main></body></html>'''
+              (folder/'index.html').write_text(page,encoding='utf-8')
+
+          print('Preview statis selesai:',len(records))
+          PY
+
+      - name: Validate
         run: |
           node --check bpd-portal-berita.js
           python - <<'PY'
           from pathlib import Path
           pages=list(Path('berita').glob('*/index.html'))
-          assert pages, 'Tidak ada halaman berita.'
+          assert pages
           for p in pages:
               s=p.read_text(encoding='utf-8')
-              for token in ('og:image','og:url','twitter:image'):
-                  assert token in s, f'{token} hilang: {p}'
-          print(f'VALID: {len(pages)} halaman preview.')
+              assert s.count('property="og:image"') == 1, f'Duplikat og:image: {p}'
+              assert s.count('name="twitter:image"') == 1, f'Duplikat twitter:image: {p}'
+          print('VALID:',len(pages),'halaman; setiap halaman hanya memiliki satu og:image.')
           PY
+
+      - name: Commit tanpa menimpa cover
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add berita
+          if git diff --cached --quiet; then echo 'Tidak ada perubahan.'; exit 0; fi
+          git commit -m 'Sinkronkan preview berita dan pertahankan cover'
+          git pull --rebase origin main
+          git push origin HEAD:main

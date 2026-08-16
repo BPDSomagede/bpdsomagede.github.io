@@ -2,6 +2,10 @@ name: Perbaiki Sampul HUT 2017
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/perbaiki-cover-hut-2017.yml'
 
 permissions:
   contents: write
@@ -38,10 +42,8 @@ jobs:
           base='https://bpdsomagede.github.io/berita/semarak-hut-ke-72-ri-tahun-2017-bpd-dan-perangkat-desa-somagede-ikut-sukseskan-jalan-santa-20170813/cover.jpg'
           version=hashlib.sha256(Path('berita/semarak-hut-ke-72-ri-tahun-2017-bpd-dan-perangkat-desa-somagede-ikut-sukseskan-jalan-santa-20170813/cover.jpg').read_bytes()).hexdigest()[:16]
           img=base+'?v='+version
-          s=re.sub(r'(<meta property="og:image" content=")[^"]*(")',r'\1'+img+r'\2',s,count=1)
-          s=re.sub(r'(<meta property="og:image:url" content=")[^"]*(")',r'\1'+img+r'\2',s,count=1)
-          s=re.sub(r'(<meta property="og:image:secure_url" content=")[^"]*(")',r'\1'+img+r'\2',s,count=1)
-          s=re.sub(r'(<meta name="twitter:image" content=")[^"]*(")',r'\1'+img+r'\2',s,count=1)
+          for pattern in [r'(<meta property="og:image" content=")[^"]*(")',r'(<meta property="og:image:url" content=")[^"]*(")',r'(<meta property="og:image:secure_url" content=")[^"]*(")',r'(<meta name="twitter:image" content=")[^"]*(")']:
+              s=re.sub(pattern,lambda m:m.group(1)+img+m.group(2),s,count=1)
           s=re.sub(r'"image":\s*\[[^]]*\]', '"image": ["'+base+'"]', s, count=1)
           s=re.sub(r'<img src="[^"]+"', '<img src="'+base+'"', s, count=1)
           p.write_text(s,encoding='utf-8')

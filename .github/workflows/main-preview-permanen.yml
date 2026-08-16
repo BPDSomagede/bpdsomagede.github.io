@@ -208,8 +208,14 @@ jobs:
           PY
 
       - name: Validasi hasil
+        shell: bash
         run: |
-          test -f berita/*/index.html
+          COUNT=$(find berita -mindepth 2 -maxdepth 2 -type f -name 'index.html' | wc -l)
+          if [ "$COUNT" -lt 1 ]; then
+            echo "Tidak ada halaman berita yang dibuat."
+            exit 1
+          fi
+          echo "Ditemukan $COUNT halaman berita."
           python - <<'PY'
           from pathlib import Path
           pages = list(Path('berita').glob('*/index.html'))

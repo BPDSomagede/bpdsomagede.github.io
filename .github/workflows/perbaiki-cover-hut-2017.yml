@@ -1,0 +1,62 @@
+name: Perbaiki Sampul HUT 2017
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Ambil foto sampul asli dari CMS
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR="berita/semarak-hut-ke-72-ri-tahun-2017-bpd-dan-perangkat-desa-somagede-ikut-sukseskan-jalan-santa-20170813"
+          mkdir -p "$DIR"
+          URL="https://res.cloudinary.com/k2mss5sn/image/upload/v1786842763/bpd-somagede/kegiatan/41/57ef5a77-afa4-4d56-aef4-0b6613e75b56.jpg"
+          curl -fL --retry 3 --connect-timeout 20 "$URL" -o "$DIR/cover.jpg"
+          file "$DIR/cover.jpg"
+          test "$(stat -c%s "$DIR/cover.jpg")" -gt 10000
+
+      - name: Paksa metadata memakai sampul tersebut
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, hashlib
+          p=Path('berita/semarak-hut-ke-72-ri-tahun-2017-bpd-dan-perangkat-desa-somagede-ikut-sukseskan-jalan-santa-20170813/index.html')
+          s=p.read_text(encoding='utf-8')
+          base='https://bpdsomagede.github.io/berita/semarak-hut-ke-72-ri-tahun-2017-bpd-dan-perangkat-desa-somagede-ikut-sukseskan-jalan-santa-20170813/cover.jpg'
+          version=hashlib.sha256(Path('berita/semarak-hut-ke-72-ri-tahun-2017-bpd-dan-perangkat-desa-somagede-ikut-sukseskan-jalan-santa-20170813/cover.jpg').read_bytes()).hexdigest()[:16]
+          img=base+'?v='+version
+          s=re.sub(r'(<meta property="og:image" content=")[^"]*(")',r'\1'+img+r'\2',s,count=1)
+          s=re.sub(r'(<meta property="og:image:url" content=")[^"]*(")',r'\1'+img+r'\2',s,count=1)
+          s=re.sub(r'(<meta property="og:image:secure_url" content=")[^"]*(")',r'\1'+img+r'\2',s,count=1)
+          s=re.sub(r'(<meta name="twitter:image" content=")[^"]*(")',r'\1'+img+r'\2',s,count=1)
+          s=re.sub(r'"image":\s*\[[^]]*\]', '"image": ["'+base+'"]', s, count=1)
+          s=re.sub(r'<img src="[^"]+"', '<img src="'+base+'"', s, count=1)
+          p.write_text(s,encoding='utf-8')
+          assert s.count('property="og:image"')==1
+          assert s.count('property="og:image:url"')==1
+          assert s.count('name="twitter:image"')==1
+          print('Sampul HUT 2017 dikunci ke cover.jpg:',img)
+          PY
+
+      - name: Commit dan push
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add berita/semarak-hut-ke-72-ri-tahun-2017-bpd-dan-perangkat-desa-somagede-ikut-sukseskan-jalan-santa-20170813
+          git commit -m 'Kunci foto sampul asli HUT 2017 untuk preview'
+          git pull --rebase origin main
+          git push origin HEAD:main

@@ -1,173 +1,29 @@
 name: Sinkron Preview Berita BPD Somagede
-
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
       - '.github/workflows/main.yml'
-  schedule:
-    - cron: '*/5 * * * *'
-
+      - 'berita/**'
+      - 'bpd-portal-berita.js'
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  sync-preview:
+  validate:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Ambil repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Buat halaman preview statis semua berita
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          from urllib.request import Request, urlopen
-          from urllib.parse import quote, urljoin
-          import json, html, re
-
-          API='https://bpd-somagede-cms.bpddesasomagede.workers.dev'
-          SITE='https://bpdsomagede.github.io/'
-          OUT=Path('berita')
-          OUT.mkdir(exist_ok=True)
-
-          def get_json(path):
-              req=Request(API+path,headers={'User-Agent':'BPD-Somagede-GitHub-Pages-Preview-Sync/1.0','Accept':'application/json'})
-              with urlopen(req,timeout=30) as r:
-                  return json.loads(r.read().decode('utf-8'))
-
-          def clean_text(value,limit=180):
-              s=re.sub(r'<[^>]+>',' ',str(value or ''))
-              s=re.sub(r'\s+',' ',s).strip()
-              return s[:limit].rstrip()
-
-          records={}
-          try:
-              a=get_json('/api/archive')
-              for row in a.get('years') or []:
-                  year=str(row.get('year') or '').strip()
-                  if year:
-                      try:
-                          d=get_json('/api/archive/'+quote(year,safe=''))
-                          for item in d.get('items') or []:
-                              slug=str(item.get('slug') or '').strip()
-                              if slug: records[slug]=item
-                      except Exception as e: print('Peringatan arsip',year,e)
-          except Exception as e: print('Peringatan daftar arsip:',e)
-
-          try:
-              d=get_json('/api/activities?limit=500')
-              for item in d.get('items') or []:
-                  slug=str(item.get('slug') or '').strip()
-                  if slug: records[slug]=item
-          except Exception as e: print('Peringatan daftar aktivitas:',e)
-
-          if not records: raise SystemExit('Tidak ada data berita yang berhasil dibaca dari API.')
-
-          generated=0
-          preserved=0
-          for slug,base in sorted(records.items()):
-              item=dict(base)
-              try:
-                  detail=get_json('/api/activities/slug/'+quote(slug,safe=''))
-                  if detail.get('ok') and detail.get('item'): item.update(detail['item'])
-              except Exception as e: print('Detail fallback:',slug,e)
-
-              title=clean_text(item.get('title') or 'Berita BPD Somagede',220)
-              desc=clean_text(item.get('excerpt') or item.get('summary') or item.get('content') or 'Informasi kegiatan Badan Permusyawaratan Desa Somagede.',190)
-              safe_slug=quote(slug,safe='-._~')
-              folder=OUT/safe_slug
-              folder.mkdir(parents=True,exist_ok=True)
-
-              # PENTING: cover.jpg yang sudah ada adalah sumber preview permanen.
-              # Workflow tidak boleh menimpanya dengan foto CMS.
-              local_cover=folder/'cover.jpg'
-              if local_cover.exists() and local_cover.stat().st_size > 0:
-                  cover=f'{SITE}berita/{safe_slug}/cover.jpg'
-                  preserved += 1
-              else:
-                  cover=str(item.get('cover_url') or '').strip()
-                  if not cover:
-                      imgs=item.get('images') or []
-                      if isinstance(imgs,list):
-                          for img in imgs:
-                              if isinstance(img,dict) and img.get('url'):
-                                  cover=str(img['url']).strip(); break
-                              if isinstance(img,str) and img.strip():
-                                  cover=img.strip(); break
-                  if cover.startswith('/'): cover=urljoin(SITE,cover)
-                  if not cover: cover=SITE+'bpd-favicon.png'
-
-              preview_url=f'{SITE}berita/{safe_slug}/'
-              article_url=f'{SITE}?berita={quote(slug,safe="")}#bpdPortalBerita'
-              esc_title=html.escape(title,quote=True)
-              esc_desc=html.escape(desc,quote=True)
-              esc_cover=html.escape(cover,quote=True)
-              esc_preview=html.escape(preview_url,quote=True)
-              esc_article=html.escape(article_url,quote=True)
-              js_target=json.dumps(article_url,ensure_ascii=False)
-              schema=json.dumps({'@context':'https://schema.org','@type':'NewsArticle','headline':title,'description':desc,'datePublished':item.get('activity_date') or None,'image':[cover],'mainEntityOfPage':preview_url,'inLanguage':'id-ID','publisher':{'@type':'GovernmentOrganization','name':'BPD Somagede','url':SITE}},ensure_ascii=False).replace('</','</')
-
-              page=f'''<!doctype html>
-          <html lang="id"><head>
-          <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-          <title>{esc_title} | BPD Somagede</title>
-          <meta name="description" content="{esc_desc}">
-          <link rel="canonical" href="{esc_preview}">
-          <meta property="og:type" content="article"><meta property="og:site_name" content="BPD Somagede">
-          <meta property="og:title" content="{esc_title}"><meta property="og:description" content="{esc_desc}">
-          <meta property="og:url" content="{esc_preview}"><meta property="og:image" content="{esc_cover}">
-          <meta property="og:image:secure_url" content="{esc_cover}"><meta property="og:image:alt" content="{esc_title}">
-          <meta property="og:locale" content="id_ID">
-          <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{esc_title}">
-          <meta name="twitter:description" content="{esc_desc}"><meta name="twitter:image" content="{esc_cover}">
-          <script type="application/ld+json">{schema}</script></head>
-          <body><main><img src="{esc_cover}" alt="{esc_title}" style="max-width:100%;height:auto"><h1>{esc_title}</h1><p>{esc_desc}</p><p><a href="{esc_article}">Buka berita di website resmi BPD Somagede</a></p></main>
-          <script>window.addEventListener('DOMContentLoaded',function(){{window.location.replace({js_target});}});</script></body></html>'''
-              (folder/'index.html').write_text(page,encoding='utf-8')
-              generated += 1
-
-          (OUT/'index.html').write_text('<!doctype html><meta charset="utf-8"><title>Berita BPD Somagede</title><script>location.replace("https://bpdsomagede.github.io/#bpdPortalBerita")</script>',encoding='utf-8')
-
-          js=Path('bpd-portal-berita.js')
-          text=js.read_text(encoding='utf-8')
-          replacement="""function shareUrl(item){
-            const slug=encodeURIComponent(item?.slug||'');
-            return `https://bpdsomagede.github.io/berita/${slug}/`;
-          }"""
-          text2,n=re.subn(r'function shareUrl\(item\)\{.*?\n\}',replacement,text,count=1,flags=re.S)
-          if n != 1: raise SystemExit(f'Fungsi shareUrl tidak ditemukan tepat satu kali: {n}')
-          js.write_text(text2,encoding='utf-8')
-
-          print(f'Preview dibuat: {generated}; cover.jpg lama dipertahankan: {preserved}')
-          PY
-
+      - uses: actions/checkout@v4
       - name: Validasi preview
-        shell: bash
         run: |
           node --check bpd-portal-berita.js
           python - <<'PY'
           from pathlib import Path
           pages=list(Path('berita').glob('*/index.html'))
-          if not pages: raise SystemExit('Tidak ada halaman preview statis.')
+          assert pages, 'Tidak ada halaman berita.'
           for p in pages:
               s=p.read_text(encoding='utf-8')
-              for token in ('og:title','og:image','og:url','twitter:image'):
-                  if token not in s: raise SystemExit(f'{p}: meta {token} hilang')
-          print(f'VALID: {len(pages)} halaman preview siap.')
+              for token in ('og:image','og:url','twitter:image'):
+                  assert token in s, f'{token} hilang: {p}'
+          print(f'VALID: {len(pages)} halaman preview.')
           PY
-
-      - name: Simpan sinkronisasi
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add berita bpd-portal-berita.js
-          if git diff --cached --quiet; then echo "Tidak ada perubahan data preview."; exit 0; fi
-          git commit -m "Pertahankan cover.jpg untuk preview berita"
-          git push
